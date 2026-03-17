@@ -9,6 +9,10 @@ Decentralized password manager that stores encrypted secrets on the Solana block
 </p>
 
 <p align="center">
+  <img src="docs/screen-dashboard.png" width="700" alt="Dashboard" />
+</p>
+
+<p align="center">
   <img src="docs/screen-vault.png" width="700" alt="Vault list" />
 </p>
 
