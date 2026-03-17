@@ -21,6 +21,17 @@
                        else throw "Unsupported system: ${system}";
       in
       {
+        packages.default = pkgs.buildGoModule {
+          pname = "solock";
+          version = "0.1.0";
+          src = ./app;
+          vendorHash = pkgs.lib.fakeHash;
+          CGO_ENABLED = 1;
+          buildInputs = with pkgs; [ sqlite ];
+          nativeBuildInputs = with pkgs; [ pkg-config ];
+          subPackages = [ "cmd/solock" ];
+        };
+
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
             go
