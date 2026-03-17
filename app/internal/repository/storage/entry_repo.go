@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/solock/solock/internal/domain"
 )
 
@@ -21,22 +22,28 @@ func (r *EntryRepo) Save(ctx context.Context, entry *domain.Entry) error {
 	if err != nil {
 		return err
 	}
-	_, err = r.s.db.ExecContext(ctx,
-		`INSERT INTO entries (id, slot_index, encrypted_data, updated_at, synced)
-		 VALUES (?, ?, ?, ?, 0)
-		 ON CONFLICT(id) DO UPDATE SET
-			slot_index = excluded.slot_index,
-			encrypted_data = excluded.encrypted_data,
-			updated_at = excluded.updated_at,
-			synced = 0`,
-		entry.ID(), entry.SlotIndex(), encrypted, entry.UpdatedAt().Unix(),
-	)
+	query, args, err := sq.Insert("entries").
+		Columns("id", "slot_index", "encrypted_data", "updated_at", "synced").
+		Values(entry.ID(), entry.SlotIndex(), encrypted, entry.UpdatedAt().Unix(), 0).
+		Suffix("ON CONFLICT(id) DO UPDATE SET slot_index = excluded.slot_index, encrypted_data = excluded.encrypted_data, updated_at = excluded.updated_at, synced = 0").
+		ToSql()
+	if err != nil {
+		return err
+	}
+	_, err = r.s.db.ExecContext(ctx, query, args...)
 	return err
 }
 
 func (r *EntryRepo) Get(ctx context.Context, id string) (*domain.Entry, error) {
+	query, args, err := sq.Select("encrypted_data").
+		From("entries").
+		Where(sq.Eq{"id": id}).
+		ToSql()
+	if err != nil {
+		return nil, err
+	}
 	var encrypted []byte
-	err := r.s.db.QueryRowContext(ctx, "SELECT encrypted_data FROM entries WHERE id = ?", id).Scan(&encrypted)
+	err = r.s.db.QueryRowContext(ctx, query, args...).Scan(&encrypted)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -47,12 +54,25 @@ func (r *EntryRepo) Get(ctx context.Context, id string) (*domain.Entry, error) {
 }
 
 func (r *EntryRepo) Delete(ctx context.Context, id string) error {
-	_, err := r.s.db.ExecContext(ctx, "DELETE FROM entries WHERE id = ?", id)
+	query, args, err := sq.Delete("entries").
+		Where(sq.Eq{"id": id}).
+		ToSql()
+	if err != nil {
+		return err
+	}
+	_, err = r.s.db.ExecContext(ctx, query, args...)
 	return err
 }
 
 func (r *EntryRepo) List(ctx context.Context) ([]*domain.Entry, error) {
-	rows, err := r.s.db.QueryContext(ctx, "SELECT encrypted_data FROM entries ORDER BY slot_index ASC")
+	query, args, err := sq.Select("encrypted_data").
+		From("entries").
+		OrderBy("slot_index ASC").
+		ToSql()
+	if err != nil {
+		return nil, err
+	}
+	rows, err := r.s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -74,19 +94,40 @@ func (r *EntryRepo) List(ctx context.Context) ([]*domain.Entry, error) {
 }
 
 func (r *EntryRepo) Count(ctx context.Context) (int, error) {
+	query, args, err := sq.Select("COUNT(*)").
+		From("entries").
+		ToSql()
+	if err != nil {
+		return 0, err
+	}
 	var count int
-	err := r.s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM entries").Scan(&count)
+	err = r.s.db.QueryRowContext(ctx, query, args...).Scan(&count)
 	return count, err
 }
 
 func (r *EntryRepo) MarkSynced(ctx context.Context, id string) error {
-	_, err := r.s.db.ExecContext(ctx, "UPDATE entries SET synced = 1 WHERE id = ?", id)
+	query, args, err := sq.Update("entries").
+		Set("synced", 1).
+		Where(sq.Eq{"id": id}).
+		ToSql()
+	if err != nil {
+		return err
+	}
+	_, err = r.s.db.ExecContext(ctx, query, args...)
 	return err
 }
 
 func (r *EntryRepo) ClearAll(ctx context.Context) error {
-	_, err := r.s.db.ExecContext(ctx, "DELETE FROM entries; DELETE FROM config; DELETE FROM sync_state;")
-	return err
+	for _, table := range []string{"entries", "config", "sync_state"} {
+		query, args, err := sq.Delete(table).ToSql()
+		if err != nil {
+			return err
+		}
+		if _, err := r.s.db.ExecContext(ctx, query, args...); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (r *EntryRepo) decryptEntry(encrypted []byte) (*domain.Entry, error) {

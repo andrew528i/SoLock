@@ -3,6 +3,8 @@ package storage
 import (
 	"context"
 	"database/sql"
+
+	sq "github.com/Masterminds/squirrel"
 )
 
 type ConfigRepo struct {
@@ -14,16 +16,28 @@ func (r *ConfigRepo) Set(ctx context.Context, key, value string) error {
 	if err != nil {
 		return err
 	}
-	_, err = r.s.db.ExecContext(ctx,
-		"INSERT INTO config (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-		key, encrypted,
-	)
+	query, args, err := sq.Insert("config").
+		Columns("key", "value").
+		Values(key, encrypted).
+		Suffix("ON CONFLICT(key) DO UPDATE SET value = excluded.value").
+		ToSql()
+	if err != nil {
+		return err
+	}
+	_, err = r.s.db.ExecContext(ctx, query, args...)
 	return err
 }
 
 func (r *ConfigRepo) Get(ctx context.Context, key string) (string, error) {
+	query, args, err := sq.Select("value").
+		From("config").
+		Where(sq.Eq{"key": key}).
+		ToSql()
+	if err != nil {
+		return "", err
+	}
 	var encrypted []byte
-	err := r.s.db.QueryRowContext(ctx, "SELECT value FROM config WHERE key = ?", key).Scan(&encrypted)
+	err = r.s.db.QueryRowContext(ctx, query, args...).Scan(&encrypted)
 	if err == sql.ErrNoRows {
 		return "", nil
 	}
