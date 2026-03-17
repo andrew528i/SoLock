@@ -25,7 +25,7 @@
           pname = "solock";
           version = "0.1.0";
           src = ./app;
-          vendorHash = pkgs.lib.fakeHash;
+          vendorHash = "sha256-ongfzXHOOTPS5C+gJ2gjHBhGbHKt4T2vSkEFyeClRBQ=";
           buildInputs = with pkgs; [ sqlite ];
           nativeBuildInputs = with pkgs; [ pkg-config ];
           subPackages = [ "cmd/solock" ];
