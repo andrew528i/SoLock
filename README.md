@@ -126,6 +126,15 @@ See [docs/building.md](docs/building.md) for details.
 - **Encrypted on-chain** - Solana stores opaque encrypted blobs, not plaintext
 - **Your program** - each user deploys their own Solana program instance
 
+## Roadmap
+
+- [ ] Browser extension (Chrome / Firefox) with autofill
+- [ ] Desktop app for macOS
+- [ ] Desktop app for Linux
+- [ ] SSH key storage
+- [ ] Secure file attachments
+- [ ] Shared vaults (multi-user access via on-chain permissions)
+
 ## License
 
 MIT
