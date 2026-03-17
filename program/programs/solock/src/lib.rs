@@ -172,3 +172,31 @@ pub enum SoLockError {
     #[msg("Entry was modified by another client, sync first")]
     ConflictDetected,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn entry_base_space_matches_fields() {
+        // owner(32) + index(4) + encrypted_data length prefix(4) + created_at(8) + updated_at(8) + bump(1)
+        assert_eq!(EntryAccount::base_space(), 32 + 4 + 4 + 8 + 8 + 1);
+    }
+
+    #[test]
+    fn vault_base_space_fits_free_slots() {
+        // discriminator(8) + owner(32) + next_index(4) + entry_count(4) + bump(1) + vec length prefix(4) + 200 * u32(4)
+        assert_eq!(VAULT_BASE_SPACE, 8 + 32 + 4 + 4 + 1 + 4 + FREE_SLOTS_CAPACITY * 4);
+    }
+
+    #[test]
+    fn free_slots_capacity_is_200() {
+        assert_eq!(FREE_SLOTS_CAPACITY, 200);
+    }
+
+    #[test]
+    fn vault_base_space_value() {
+        // 8 + 32 + 4 + 4 + 1 + 4 + 800 = 853
+        assert_eq!(VAULT_BASE_SPACE, 853);
+    }
+}
