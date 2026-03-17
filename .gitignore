@@ -1,0 +1,50 @@
+# Binaries
+/solock
+*.exe
+*.dll
+*.dylib
+
+# Go
+*.test
+*.out
+coverage.html
+
+# Development
+.solock-dev/
+.solana/
+
+# Local vault data
+vault.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Anchor/Solana program build
+program/target/
+program/.anchor/
+program/node_modules/
+
+# Nix
+result
+.direnv/
+
+# Temp keypairs
+*.json.tmp
+deployer.json
+program-keypair.json
+
+# Serena
+.serena/
+
+# Claude
+.claude/
