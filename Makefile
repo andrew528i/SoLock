@@ -1,4 +1,4 @@
-.PHONY: build run test clean generate program-build program-docker-build
+.PHONY: build run test test-go test-program clean generate program-build program-docker-build
 
 build:
 	cd app && go build -o ../solock ./cmd/solock/
@@ -6,8 +6,13 @@ build:
 run: build
 	./solock
 
-test:
+test: test-go test-program
+
+test-go:
 	cd app && go test -count=1 ./internal/...
+
+test-program:
+	cd program && cargo test
 
 generate:
 	cd app && go generate ./internal/mock/
