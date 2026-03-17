@@ -128,6 +128,15 @@ See [docs/building.md](docs/building.md) for details.
 
 ## Roadmap
 
+- [x] Solana program (Anchor/Rust) with vault and entry management
+- [x] Deterministic key derivation (SHA256 + BIP39 + SLIP-0010)
+- [x] AES-256-CBC encryption for local and on-chain data
+- [x] Terminal UI with Bubbletea
+- [x] Password, note and card entry types
+- [x] TOTP 2FA code generation
+- [x] Bidirectional sync with Solana
+- [x] Embedded program binary with runtime patching
+- [x] Built-in password generator
 - [ ] Browser extension (Chrome / Firefox) with autofill
 - [ ] Desktop app for macOS
 - [ ] Desktop app for Linux
