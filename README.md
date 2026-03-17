@@ -2,6 +2,20 @@
 
 Decentralized password manager that stores encrypted secrets on the Solana blockchain. Single master password, no accounts, no servers - your vault lives on-chain and is accessible from any machine.
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/screen-unlock.png" width="700" alt="Unlock screen" />
+</p>
+
+<p align="center">
+  <img src="docs/screen-vault.png" width="700" alt="Vault list" />
+</p>
+
+<p align="center">
+  <img src="docs/screen-entry-note.png" width="700" alt="Note entry" />
+</p>
+
 ## How it works
 
 ```mermaid
@@ -26,12 +40,21 @@ One password derives everything: your Solana keypair, program ID, and encryption
 - **End-to-end encrypted** - data is encrypted before leaving your machine
 - **Local-first** - works offline, syncs when connected
 - **Terminal UI** - keyboard-driven interface built with [Bubbletea](https://github.com/charmbracelet/bubbletea)
-- **Entry types** - passwords, notes, payment cards
-- **TOTP support** - 2FA code generation with countdown timer
-- **Password generator** - configurable length, character sets
-- **Clipboard integration** - copy passwords and TOTP codes
+- **TOTP support** - 2FA code generation with live countdown timer
+- **Password generator** - configurable length, uppercase, digits, special characters
+- **Clipboard integration** - copy passwords and TOTP codes with one key
 - **Optimistic locking** - safe multi-client access with conflict detection
 - **Slot reuse** - deleted entries free up on-chain space
+
+## Supported secret types
+
+| Type | Fields | Description |
+|------|--------|-------------|
+| **Password** | site, username, password, TOTP secret, notes | Website and app credentials with optional 2FA |
+| **Note** | content | Free-form encrypted text for any sensitive information |
+| **Card** | cardholder, number, expiry, CVV, notes | Payment card details |
+
+Password entries with a TOTP secret automatically generate live 2FA codes with a countdown timer.
 
 ## Quick start
 
