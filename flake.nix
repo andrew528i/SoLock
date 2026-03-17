@@ -26,7 +26,6 @@
           version = "0.1.0";
           src = ./app;
           vendorHash = pkgs.lib.fakeHash;
-          env.CGO_ENABLED = "1";
           buildInputs = with pkgs; [ sqlite ];
           nativeBuildInputs = with pkgs; [ pkg-config ];
           subPackages = [ "cmd/solock" ];
