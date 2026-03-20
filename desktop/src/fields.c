@@ -14,7 +14,7 @@ typedef struct {
     GtkWidget *totp_bar;
 } FieldsData;
 
-static void on_field_paste(SolockApp *app, const char *value)
+void on_field_paste(SolockApp *app, const char *value)
 {
     SolockConfig *config = solock_app_get_config(app);
     const char *method = solock_config_get_paste_method(config);

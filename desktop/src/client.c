@@ -31,7 +31,7 @@ static void cleanup_stale_socket(void)
     const char *home = g_get_home_dir();
     char *sock_path = g_build_filename(home, ".solock", "solock.sock", NULL);
     if (g_file_test(sock_path, G_FILE_TEST_EXISTS)) {
-        g_unlink(sock_path);
+        unlink(sock_path);
     }
     g_free(sock_path);
 }
