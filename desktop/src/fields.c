@@ -308,6 +308,13 @@ static gboolean on_key_pressed(GtkEventControllerKey *ctrl, guint keyval,
         }
     }
 
+    if (keyval == GDK_KEY_Return || keyval == GDK_KEY_KP_Enter) {
+        if (dd->field_count == 1 && dd->fields[0].value && *dd->fields[0].value) {
+            do_paste_value(dd->app, dd->fields[0].value);
+            return TRUE;
+        }
+    }
+
     return FALSE;
 }
 

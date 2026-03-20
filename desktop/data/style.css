@@ -18,11 +18,17 @@
     background: rgba(55, 65, 73, 0.7);
 }
 
-.search-input > text > image:first-child {
+.search-input image.left {
     opacity: 0.4;
 }
 
-.search-input > text > image:last-child {
+.search-input button.clear {
+    opacity: 0;
+    min-width: 0;
+    min-height: 0;
+}
+
+.search-input image.right {
     opacity: 0;
     min-width: 0;
     min-height: 0;
@@ -136,14 +142,16 @@
 }
 
 .totp-progress trough {
-    min-height: 2px;
-    border-radius: 1px;
-    background: rgba(79, 88, 94, 0.3);
+    min-height: 4px;
+    border-radius: 2px;
+    background: rgba(79, 88, 94, 0.2);
+    border: none;
+    outline: none;
 }
 
 .totp-progress trough block.filled {
     background-color: rgba(127, 187, 179, 0.7);
-    border-radius: 1px;
+    border-radius: 2px;
 }
 
 .totp-ok trough block.filled {
@@ -177,12 +185,23 @@
     color: rgba(211, 198, 170, 0.6);
 }
 
+levelbar trough {
+    border-radius: 2px;
+    border: none;
+    outline: none;
+}
+
 levelbar trough block.filled {
     background-color: rgba(127, 187, 179, 0.7);
-    border-radius: 1px;
+    border-radius: 2px;
 }
 
 levelbar trough block.empty {
-    background-color: rgba(79, 88, 94, 0.2);
-    border-radius: 1px;
+    background-color: rgba(79, 88, 94, 0.15);
+    border-radius: 2px;
+}
+
+levelbar:focus {
+    outline: none;
+    border: none;
 }

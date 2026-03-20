@@ -127,6 +127,24 @@ static void on_copy_field_clicked(GtkButton *button, gpointer data)
         solock_clipboard_copy(text, 0, NULL);
 }
 
+static void on_copy_totp_clicked(GtkButton *button, gpointer data)
+{
+    (void)button;
+    GtkWidget *code_label = data;
+    const char *text = gtk_label_get_text(GTK_LABEL(code_label));
+    if (!text || !*text) return;
+
+    char *clean = g_strdup(text);
+    char *dst = clean;
+    for (const char *src = text; *src; src++) {
+        if (*src != ' ')
+            *dst++ = *src;
+    }
+    *dst = '\0';
+    solock_clipboard_copy(clean, 0, NULL);
+    g_free(clean);
+}
+
 static void vault_clear_container(GtkWidget *container)
 {
     GtkWidget *child;
@@ -390,13 +408,16 @@ static void vault_show_detail(VaultData *vd, JsonObject *obj)
     GList *members = json_object_get_members(fields);
     for (GList *l = members; l; l = l->next) {
         const char *key = l->data;
+        if (g_strcmp0(key, "totp_secret") == 0 || g_strcmp0(key, "secret") == 0)
+            continue;
+
         const char *value = json_object_get_string_member(fields, key);
         if (!value) value = "";
 
         GtkWidget *row = adw_action_row_new();
         adw_preferences_row_set_title(ADW_PREFERENCES_ROW(row), human_label(key));
-        gtk_widget_set_margin_top(row, 2);
-        gtk_widget_set_margin_bottom(row, 2);
+        gtk_widget_set_margin_top(row, 4);
+        gtk_widget_set_margin_bottom(row, 4);
 
         if (is_sensitive_field(key)) {
             adw_action_row_set_subtitle(ADW_ACTION_ROW(row),
@@ -433,10 +454,23 @@ static void vault_show_detail(VaultData *vd, JsonObject *obj)
         gtk_widget_set_margin_top(totp_box, 8);
         gtk_widget_set_margin_bottom(totp_box, 8);
 
+        GtkWidget *totp_code_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+        gtk_widget_set_valign(totp_code_row, GTK_ALIGN_CENTER);
+
         vd->detail_totp_code = gtk_label_new("--- ---");
         gtk_widget_add_css_class(vd->detail_totp_code, "title-1");
         gtk_label_set_xalign(GTK_LABEL(vd->detail_totp_code), 0);
-        gtk_box_append(GTK_BOX(totp_box), vd->detail_totp_code);
+        gtk_widget_set_hexpand(vd->detail_totp_code, TRUE);
+        gtk_box_append(GTK_BOX(totp_code_row), vd->detail_totp_code);
+
+        GtkWidget *totp_copy_btn = gtk_button_new_from_icon_name("edit-copy-symbolic");
+        gtk_widget_add_css_class(totp_copy_btn, "flat");
+        gtk_widget_set_valign(totp_copy_btn, GTK_ALIGN_CENTER);
+        g_signal_connect(totp_copy_btn, "clicked",
+                         G_CALLBACK(on_copy_totp_clicked), vd->detail_totp_code);
+        gtk_box_append(GTK_BOX(totp_code_row), totp_copy_btn);
+
+        gtk_box_append(GTK_BOX(totp_box), totp_code_row);
 
         vd->detail_totp_bar = gtk_level_bar_new_for_interval(0.0, 1.0);
         gtk_level_bar_set_value(GTK_LEVEL_BAR(vd->detail_totp_bar), 1.0);
@@ -725,13 +759,13 @@ static void on_add_save_clicked(GtkButton *button, gpointer data)
     VaultData *vd = data;
 
     const char *name = gtk_editable_get_text(GTK_EDITABLE(vd->add_name_entry));
-    if (!name || !*name) return;
 
     guint type_idx = gtk_drop_down_get_selected(GTK_DROP_DOWN(vd->add_type_dropdown));
     if (type_idx >= (guint)entry_types_count) return;
 
     const char *type = entry_types[type_idx].type;
 
+    const char *site_value = NULL;
     JsonBuilder *builder = json_builder_new();
     json_builder_begin_object(builder);
 
@@ -746,6 +780,18 @@ static void on_add_save_clicked(GtkButton *button, gpointer data)
         const char *val = gtk_editable_get_text(GTK_EDITABLE(entry));
         json_builder_set_member_name(builder, key);
         json_builder_add_string_value(builder, val ? val : "");
+
+        if (g_strcmp0(key, "site") == 0 && val && *val)
+            site_value = val;
+    }
+
+    if (!name || !*name) {
+        if (site_value)
+            name = site_value;
+        else {
+            g_object_unref(builder);
+            return;
+        }
     }
 
     json_builder_end_object(builder);
@@ -968,6 +1014,7 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
                                    GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
 
     vd->detail_view = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    gtk_widget_set_valign(vd->detail_view, GTK_ALIGN_START);
     gtk_widget_set_margin_start(vd->detail_view, 16);
     gtk_widget_set_margin_end(vd->detail_view, 16);
     gtk_widget_set_margin_top(vd->detail_view, 12);
@@ -1020,6 +1067,7 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
     gtk_paned_set_end_child(GTK_PANED(paned), vd->detail_stack);
 
     vault_refresh_entries(vd);
+    gtk_list_box_unselect_all(GTK_LIST_BOX(vd->list_box));
 
     return paned;
 }

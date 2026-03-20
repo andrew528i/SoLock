@@ -9,7 +9,7 @@ typedef struct {
 
 static const char *section_names[] = { "vault", "dashboard", "settings" };
 static const char *section_titles[] = { "Vault", "Dashboard", "Settings" };
-static const char *sidebar_labels[] = { "\xf0\x9f\x94\x90 Vault", "\xf0\x9f\x93\x8a Dashboard", "\xe2\x9a\x99 Settings", "\xf0\x9f\x9a\xaa Quit" };
+static const char *sidebar_labels[] = { "\xf0\x9f\x94\x90 Vault", "\xf0\x9f\x93\x8a Dashboard", "\xe2\x9a\x99 Settings", "\xe2\x8f\xbb Quit" };
 
 static void on_sidebar_row_selected(GtkListBox *list, GtkListBoxRow *row, gpointer data)
 {
@@ -28,7 +28,11 @@ static void on_quit_row_activated(GtkListBox *list, GtkListBoxRow *row, gpointer
 {
     (void)list; (void)row;
     MainWindowData *mwd = data;
-    gtk_window_close(mwd->window);
+    GApplication *gapp = G_APPLICATION(gtk_window_get_application(mwd->window));
+    if (gapp)
+        g_application_quit(gapp);
+    else
+        gtk_window_close(mwd->window);
 }
 
 GtkWidget *solock_main_window_new(SolockApp *app)
