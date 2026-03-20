@@ -1,5 +1,6 @@
 # Binaries
 /solock
+/app/solock
 *.exe
 *.dll
 *.dylib
@@ -48,3 +49,6 @@ program-keypair.json
 
 # Claude
 .claude/
+
+# Desktop build
+desktop/builddir/
