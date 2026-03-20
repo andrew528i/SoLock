@@ -349,7 +349,7 @@ GtkWidget *solock_search_view_new(SolockApp *app)
     gtk_scrolled_window_set_max_content_height(GTK_SCROLLED_WINDOW(scroll), 320);
     gtk_scrolled_window_set_propagate_natural_height(GTK_SCROLLED_WINDOW(scroll), TRUE);
     gtk_widget_set_vexpand(scroll, FALSE);
-    gtk_widget_set_size_request(scroll, 280, -1);
+    gtk_widget_set_size_request(scroll, 280, 0);
 
     GtkWidget *list_box = gtk_list_box_new();
     gtk_list_box_set_selection_mode(GTK_LIST_BOX(list_box), GTK_SELECTION_SINGLE);
