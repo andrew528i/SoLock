@@ -79,6 +79,7 @@ GtkWidget *solock_main_window_new(SolockApp *app)
 
     GtkWidget *sidebar_spacer = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     gtk_widget_set_vexpand(sidebar_spacer, TRUE);
+    gtk_widget_add_css_class(sidebar_spacer, "navigation-sidebar");
     gtk_box_append(GTK_BOX(sidebar_box), sidebar_spacer);
 
     GtkWidget *quit_list = gtk_list_box_new();

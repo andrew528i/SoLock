@@ -32,7 +32,7 @@
 
 .entry-list {
     background: transparent;
-    padding: 4px 0 6px 0;
+    padding: 6px 0;
 }
 
 .entry-list row {
@@ -202,5 +202,25 @@ levelbar:focus-visible {
 }
 
 preferencesgroup list row {
-    padding: 6px 10px;
+    padding: 8px 12px;
+}
+
+preferencesgroup list row .title {
+    margin-bottom: 2px;
+}
+
+preferencesgroup list row .subtitle {
+    margin-top: 2px;
+}
+
+preferencesgroup {
+    margin-top: 6px;
+}
+
+.navigation-sidebar {
+    background-color: rgba(35, 42, 48, 1);
+}
+
+headerbar {
+    min-height: 42px;
 }

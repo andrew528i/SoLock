@@ -2,7 +2,7 @@
 
 extern SolockClient *solock_app_get_client(SolockApp *app);
 
-#define STATE_RESET_SECONDS 60
+#define STATE_RESET_SECONDS 30
 
 typedef struct {
     SolockApp  *app;

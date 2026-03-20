@@ -1178,6 +1178,8 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
     vault_refresh_entries(vd);
     gtk_list_box_unselect_all(GTK_LIST_BOX(vd->list_box));
 
+    g_signal_connect_swapped(paned, "map", G_CALLBACK(vault_refresh_entries), vd);
+
     GtkEventController *key_ctrl = gtk_event_controller_key_new();
     g_signal_connect(key_ctrl, "key-pressed", G_CALLBACK(on_detail_key_pressed), vd);
     gtk_widget_add_controller(paned, key_ctrl);

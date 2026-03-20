@@ -374,9 +374,9 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
     gboolean has_totp = json_object_get_boolean_member_with_default(obj, "has_totp", FALSE);
 
     GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-    gtk_widget_set_margin_start(box, 8);
-    gtk_widget_set_margin_end(box, 8);
-    gtk_widget_set_margin_top(box, 8);
+    gtk_widget_set_margin_start(box, 10);
+    gtk_widget_set_margin_end(box, 10);
+    gtk_widget_set_margin_top(box, 10);
     gtk_widget_set_margin_bottom(box, 8);
     gtk_widget_set_size_request(box, 280, -1);
 
@@ -425,8 +425,9 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
     int field_count = 0;
     for (GList *l = members; l; l = l->next) {
         const char *key = l->data;
-        if (!is_hidden_field(key) && g_strcmp0(key, "site") != 0)
-            field_count++;
+        if (is_hidden_field(key) || g_strcmp0(key, "site") == 0) continue;
+        const char *val = json_object_get_string_member(fields, key);
+        if (val && *val) field_count++;
     }
 
     int totp_idx = field_count;
@@ -444,7 +445,7 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
         if (g_strcmp0(key, "site") == 0) continue;
 
         const char *value = json_object_get_string_member(fields, key);
-        if (!value) value = "";
+        if (!value || !*value) continue;
 
         dd->fields[idx].label = g_strdup(human_label(key));
         dd->fields[idx].value = g_strdup(value);

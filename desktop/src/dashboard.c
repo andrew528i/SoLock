@@ -337,7 +337,7 @@ GtkWidget *solock_dashboard_view_new(SolockApp *app)
     gtk_widget_set_margin_bottom(bottom_bar, 8);
 
     dd->refresh_btn = gtk_button_new_with_label("Sync");
-    gtk_widget_add_css_class(dd->refresh_btn, "flat");
+    gtk_widget_add_css_class(dd->refresh_btn, "suggested-action");
     g_signal_connect(dd->refresh_btn, "clicked", G_CALLBACK(on_refresh_clicked), dd);
     gtk_box_append(GTK_BOX(bottom_bar), dd->refresh_btn);
 
