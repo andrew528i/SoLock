@@ -1,20 +1,20 @@
 .popup-window {
-    background-color: rgba(45, 53, 59, 0.94);
-    border-radius: 16px;
-    border: 1px solid rgba(127, 187, 179, 0.12);
+    background-color: rgba(45, 53, 59, 0.95);
+    border-radius: 14px;
+    border: 1px solid rgba(127, 187, 179, 0.1);
 }
 
 .search-input {
-    background: rgba(52, 63, 68, 0.7);
-    border-radius: 10px;
-    padding: 8px 12px;
-    font-size: 14px;
-    border: 1px solid rgba(79, 88, 94, 0.3);
+    background: rgba(52, 63, 68, 0.6);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 13px;
+    border: 1px solid rgba(79, 88, 94, 0.25);
 }
 
 .search-input:focus {
-    background: rgba(52, 63, 68, 0.9);
-    border-color: rgba(127, 187, 179, 0.4);
+    background: rgba(52, 63, 68, 0.8);
+    border-color: rgba(127, 187, 179, 0.35);
 }
 
 .entry-list {
@@ -22,8 +22,8 @@
 }
 
 .entry-list row {
-    border-radius: 10px;
-    margin: 1px 8px;
+    border-radius: 8px;
+    margin: 1px 4px;
     padding: 0;
     transition: background-color 150ms ease;
 }
@@ -33,112 +33,108 @@
 }
 
 .entry-list row:selected {
-    background-color: rgba(127, 187, 179, 0.12);
-}
-
-.entry-row {
-    min-height: 28px;
+    background-color: rgba(127, 187, 179, 0.1);
 }
 
 .entry-name {
-    font-weight: 600;
-    font-size: 14px;
-    color: rgba(211, 198, 170, 0.95);
+    font-weight: 500;
+    font-size: 13px;
+    color: rgba(211, 198, 170, 0.92);
 }
 
 .entry-subtitle {
-    font-size: 11.5px;
-    color: rgba(157, 169, 160, 0.7);
+    font-size: 11px;
+    color: rgba(157, 169, 160, 0.55);
 }
 
 .entry-icon {
-    color: rgba(157, 169, 160, 0.5);
+    color: rgba(157, 169, 160, 0.4);
 }
 
 .totp-indicator {
-    color: rgba(127, 187, 179, 0.8);
-    font-size: 8px;
+    color: rgba(127, 187, 179, 0.7);
+    font-size: 7px;
 }
 
 .label-hint {
-    font-weight: 700;
-    font-size: 11px;
+    font-weight: 600;
+    font-size: 10px;
     color: @accent_color;
-    background: rgba(127, 187, 179, 0.15);
-    border-radius: 4px;
-    min-width: 18px;
-    min-height: 18px;
-    padding: 0 4px;
+    background: rgba(127, 187, 179, 0.12);
+    border-radius: 3px;
+    min-width: 16px;
+    min-height: 16px;
+    padding: 0 3px;
 }
 
 .detail-title {
-    font-weight: 600;
-    font-size: 18px;
-    color: rgba(211, 198, 170, 0.95);
+    font-weight: 500;
+    font-size: 16px;
+    color: rgba(211, 198, 170, 0.92);
 }
 
 .detail-type {
-    font-size: 12px;
-    color: rgba(157, 169, 160, 0.6);
+    font-size: 11px;
+    color: rgba(157, 169, 160, 0.5);
 }
 
 .detail-field-row {
-    border-radius: 10px;
-    padding: 10px 14px;
-    margin: 2px 0;
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin: 1px 0;
     transition: background-color 150ms ease;
 }
 
 .detail-field-row:hover {
-    background-color: rgba(52, 63, 68, 0.6);
+    background-color: rgba(52, 63, 68, 0.5);
 }
 
 .detail-field-label {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 500;
-    color: rgba(157, 169, 160, 0.6);
+    color: rgba(157, 169, 160, 0.5);
     letter-spacing: 0.3px;
 }
 
 .detail-field-value {
-    font-size: 14px;
-    color: rgba(211, 198, 170, 0.9);
-    margin-top: 2px;
+    font-size: 13px;
+    color: rgba(211, 198, 170, 0.85);
+    margin-top: 1px;
 }
 
 .totp-section {
-    background: rgba(127, 187, 179, 0.06);
-    border-radius: 12px;
-    padding: 14px 16px;
+    background: rgba(127, 187, 179, 0.05);
+    border-radius: 10px;
+    padding: 10px 14px;
     transition: background-color 150ms ease;
 }
 
 .totp-section:hover {
-    background: rgba(127, 187, 179, 0.1);
+    background: rgba(127, 187, 179, 0.08);
 }
 
 .totp-code {
     font-family: monospace;
-    font-size: 28px;
-    font-weight: 700;
-    letter-spacing: 4px;
-    color: rgba(211, 198, 170, 0.95);
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    color: rgba(211, 198, 170, 0.92);
 }
 
 .totp-remaining {
-    font-size: 12px;
-    color: rgba(157, 169, 160, 0.5);
+    font-size: 11px;
+    color: rgba(157, 169, 160, 0.45);
 }
 
 .totp-progress trough {
-    min-height: 3px;
-    border-radius: 2px;
-    background: rgba(79, 88, 94, 0.3);
+    min-height: 2px;
+    border-radius: 1px;
+    background: rgba(79, 88, 94, 0.2);
 }
 
 .totp-progress trough block.filled {
     background-color: @accent_color;
-    border-radius: 2px;
+    border-radius: 1px;
 }
 
 .totp-progress trough block.empty {
@@ -147,25 +143,25 @@
 
 .copied-feedback {
     color: @accent_color;
-    font-weight: 600;
+    font-weight: 500;
 }
 
 .unlock-icon {
-    color: rgba(127, 187, 179, 0.6);
+    color: rgba(127, 187, 179, 0.5);
 }
 
 .unlock-title {
-    font-size: 15px;
-    font-weight: 500;
-    color: rgba(211, 198, 170, 0.8);
+    font-size: 14px;
+    font-weight: 400;
+    color: rgba(211, 198, 170, 0.7);
 }
 
 levelbar trough block.filled {
     background-color: @accent_color;
-    border-radius: 2px;
+    border-radius: 1px;
 }
 
 levelbar trough block.empty {
-    background-color: rgba(79, 88, 94, 0.2);
-    border-radius: 2px;
+    background-color: rgba(79, 88, 94, 0.15);
+    border-radius: 1px;
 }

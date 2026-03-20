@@ -92,7 +92,7 @@ GtkWidget *solock_popup_new(SolockApp *app)
 {
     GtkWidget *win = gtk_window_new();
     gtk_window_set_decorated(GTK_WINDOW(win), FALSE);
-    gtk_window_set_default_size(GTK_WINDOW(win), 420, 500);
+    gtk_window_set_default_size(GTK_WINDOW(win), 380, -1);
     gtk_window_set_application(GTK_WINDOW(win), GTK_APPLICATION(app));
 
     gtk_layer_init_for_window(GTK_WINDOW(win));

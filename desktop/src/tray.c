@@ -414,7 +414,8 @@ static void on_bus_acquired(GDBusConnection *conn, const char *name, gpointer da
         return;
     }
 
-    register_with_watcher(conn, name);
+    const char *unique = g_dbus_connection_get_unique_name(conn);
+    register_with_watcher(conn, unique ? unique : name);
 }
 
 static void on_name_acquired(GDBusConnection *conn, const char *name, gpointer data)
