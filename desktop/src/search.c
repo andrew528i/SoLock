@@ -279,7 +279,7 @@ static void refresh_entries(SearchData *sd)
                 subtitle = json_object_get_string_member(fields, "cardholder");
         }
 
-        GtkWidget *row_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
+        GtkWidget *row_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
         gtk_widget_add_css_class(row_box, "entry-row");
         gtk_widget_set_margin_start(row_box, 6);
         gtk_widget_set_margin_end(row_box, 6);
@@ -304,6 +304,7 @@ static void refresh_entries(SearchData *sd)
         gtk_image_set_pixel_size(GTK_IMAGE(icon), 18);
         gtk_widget_add_css_class(icon, "entry-icon");
         gtk_widget_set_valign(icon, GTK_ALIGN_CENTER);
+        gtk_widget_set_margin_start(icon, 2);
         gtk_box_append(GTK_BOX(row_box), icon);
 
         GtkWidget *text_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
@@ -328,7 +329,7 @@ static void refresh_entries(SearchData *sd)
         gtk_box_append(GTK_BOX(row_box), text_box);
 
         if (has_totp) {
-            GtkWidget *totp_indicator = gtk_label_new("\xf0\x9f\x94\x91");
+            GtkWidget *totp_indicator = gtk_label_new("\xe2\x97\x8f");
             gtk_widget_add_css_class(totp_indicator, "totp-indicator");
             gtk_widget_set_valign(totp_indicator, GTK_ALIGN_CENTER);
             gtk_widget_set_margin_end(totp_indicator, 2);
@@ -369,6 +370,8 @@ static void refresh_entries(SearchData *sd)
     GtkListBoxRow *first = gtk_list_box_get_row_at_index(GTK_LIST_BOX(sd->list_box), 0);
     if (first)
         gtk_list_box_select_row(GTK_LIST_BOX(sd->list_box), first);
+
+    gtk_widget_queue_draw(sd->list_box);
 }
 
 static void on_view_map(GtkWidget *widget, gpointer data)

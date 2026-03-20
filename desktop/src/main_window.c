@@ -52,7 +52,7 @@ GtkWidget *solock_main_window_new(SolockApp *app)
     adw_header_bar_set_show_title(ADW_HEADER_BAR(sidebar_header), TRUE);
     adw_header_bar_set_title_widget(ADW_HEADER_BAR(sidebar_header),
                                      GTK_WIDGET(adw_window_title_new("SoLock", "")));
-    gtk_widget_set_size_request(sidebar_header, -1, 47);
+    gtk_widget_set_size_request(sidebar_header, -1, 48);
     gtk_box_append(GTK_BOX(sidebar_box), sidebar_header);
 
     GtkWidget *sidebar_list = gtk_list_box_new();
@@ -63,8 +63,8 @@ GtkWidget *solock_main_window_new(SolockApp *app)
         GtkWidget *row_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
         gtk_widget_set_margin_start(row_box, 14);
         gtk_widget_set_margin_end(row_box, 14);
-        gtk_widget_set_margin_top(row_box, 10);
-        gtk_widget_set_margin_bottom(row_box, 10);
+        gtk_widget_set_margin_top(row_box, 12);
+        gtk_widget_set_margin_bottom(row_box, 12);
 
         GtkWidget *img = gtk_image_new_from_icon_name(sidebar_icon_names[i]);
         gtk_image_set_pixel_size(GTK_IMAGE(img), 16);
@@ -91,8 +91,8 @@ GtkWidget *solock_main_window_new(SolockApp *app)
     GtkWidget *quit_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
     gtk_widget_set_margin_start(quit_row, 14);
     gtk_widget_set_margin_end(quit_row, 14);
-    gtk_widget_set_margin_top(quit_row, 10);
-    gtk_widget_set_margin_bottom(quit_row, 10);
+    gtk_widget_set_margin_top(quit_row, 12);
+    gtk_widget_set_margin_bottom(quit_row, 12);
     GtkWidget *quit_icon = gtk_image_new_from_icon_name("application-exit-symbolic");
     gtk_image_set_pixel_size(GTK_IMAGE(quit_icon), 16);
     gtk_box_append(GTK_BOX(quit_row), quit_icon);
@@ -111,7 +111,7 @@ GtkWidget *solock_main_window_new(SolockApp *app)
     GtkWidget *content_header = adw_header_bar_new();
     GtkWidget *content_title = GTK_WIDGET(adw_window_title_new(section_titles[0], ""));
     adw_header_bar_set_title_widget(ADW_HEADER_BAR(content_header), content_title);
-    gtk_widget_set_size_request(content_header, -1, 47);
+    gtk_widget_set_size_request(content_header, -1, 48);
     gtk_box_append(GTK_BOX(content_box), content_header);
 
     GtkWidget *content_stack = gtk_stack_new();

@@ -362,6 +362,8 @@ static void vault_refresh_entries(VaultData *vd)
         gtk_widget_add_css_class(type_badge, "dim-label");
         gtk_widget_add_css_class(type_badge, "caption");
         gtk_widget_set_valign(type_badge, GTK_ALIGN_CENTER);
+        gtk_widget_set_margin_top(type_badge, 2);
+        gtk_widget_set_margin_bottom(type_badge, 2);
         gtk_box_append(GTK_BOX(row_box), type_badge);
 
         gtk_list_box_append(GTK_LIST_BOX(vd->list_box), row_box);
@@ -1065,7 +1067,7 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
     /* empty state - summary */
     vd->detail_empty = gtk_box_new(GTK_ORIENTATION_VERTICAL, 12);
     gtk_widget_set_valign(vd->detail_empty, GTK_ALIGN_START);
-    gtk_widget_set_halign(vd->detail_empty, GTK_ALIGN_FILL);
+    gtk_widget_set_halign(vd->detail_empty, GTK_ALIGN_CENTER);
     gtk_widget_set_margin_start(vd->detail_empty, 16);
     gtk_widget_set_margin_end(vd->detail_empty, 16);
     gtk_widget_set_margin_top(vd->detail_empty, 24);
@@ -1127,6 +1129,7 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
 
     /* header */
     GtkWidget *detail_header = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+    gtk_widget_set_margin_start(detail_header, 4);
     gtk_widget_set_margin_bottom(detail_header, 12);
 
     vd->detail_name_label = gtk_label_new("");
@@ -1158,7 +1161,7 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
     gtk_widget_set_halign(vd->detail_action_bar, GTK_ALIGN_END);
 
     vd->detail_edit_btn = gtk_button_new_with_label("Edit");
-    gtk_widget_add_css_class(vd->detail_edit_btn, "flat");
+    gtk_widget_add_css_class(vd->detail_edit_btn, "suggested-action");
     g_signal_connect(vd->detail_edit_btn, "clicked", G_CALLBACK(on_edit_clicked), vd);
     gtk_box_append(GTK_BOX(vd->detail_action_bar), vd->detail_edit_btn);
 

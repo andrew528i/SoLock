@@ -32,7 +32,7 @@
 
 .entry-list {
     background: transparent;
-    padding: 2px 0;
+    padding: 2px 0 6px 0;
 }
 
 .entry-list row {
@@ -66,7 +66,8 @@
 }
 
 .totp-indicator {
-    font-size: 14px;
+    font-size: 6px;
+    color: #7fbbb3;
 }
 
 .label-hint {
@@ -100,6 +101,10 @@
     font-size: 10px;
     color: #7a8478;
     font-weight: 500;
+}
+
+.detail-header {
+    padding: 6px 10px;
 }
 
 .detail-field-row {
@@ -221,9 +226,8 @@ preferencesgroup > box > label {
     margin-bottom: 6px;
 }
 
-.sidebar-unified,
-box.navigation-sidebar {
-    background-color: @headerbar_bg_color;
+.sidebar-unified {
+    background-color: @window_bg_color;
 }
 
 headerbar {
