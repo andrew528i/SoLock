@@ -1,25 +1,25 @@
 .popup-window {
-    background-color: rgba(40, 48, 54, 0.96);
+    background-color: rgba(38, 45, 51, 0.97);
     border-radius: 12px;
-    border: 1px solid rgba(127, 187, 179, 0.08);
+    border: 1px solid rgba(127, 187, 179, 0.12);
 }
 
 .search-input {
-    background: rgba(55, 65, 73, 0.5);
+    background: rgba(52, 62, 70, 0.6);
     border-radius: 8px;
     border: none;
     padding: 5px 8px;
     font-size: 13px;
-    color: rgba(211, 198, 170, 0.9);
-    caret-color: rgba(127, 187, 179, 0.8);
+    color: rgba(220, 210, 185, 0.95);
+    caret-color: rgba(127, 187, 179, 0.9);
 }
 
 .search-input:focus {
-    background: rgba(55, 65, 73, 0.7);
+    background: rgba(52, 62, 70, 0.8);
 }
 
 .search-input image.left {
-    opacity: 0.4;
+    opacity: 0.5;
 }
 
 .search-input button.clear {
@@ -47,26 +47,26 @@
 }
 
 .entry-list row:hover {
-    background-color: rgba(127, 187, 179, 0.05);
+    background-color: rgba(127, 187, 179, 0.07);
 }
 
 .entry-list row:selected {
-    background-color: rgba(127, 187, 179, 0.09);
+    background-color: rgba(127, 187, 179, 0.12);
 }
 
 .entry-name {
     font-weight: 500;
     font-size: 13px;
-    color: rgba(211, 198, 170, 0.88);
+    color: rgba(220, 210, 185, 0.95);
 }
 
 .entry-subtitle {
     font-size: 11px;
-    color: rgba(157, 169, 160, 0.5);
+    color: rgba(170, 178, 172, 0.7);
 }
 
 .entry-icon {
-    color: rgba(157, 169, 160, 0.35);
+    color: rgba(170, 178, 172, 0.5);
 }
 
 .totp-indicator {
@@ -76,8 +76,8 @@
 .label-hint {
     font-weight: 600;
     font-size: 10px;
-    color: rgba(127, 187, 179, 0.9);
-    background: rgba(127, 187, 179, 0.1);
+    color: rgba(127, 187, 179, 1.0);
+    background: rgba(127, 187, 179, 0.15);
     border-radius: 3px;
     min-width: 15px;
     min-height: 15px;
@@ -87,12 +87,12 @@
 .detail-name {
     font-weight: 500;
     font-size: 14px;
-    color: rgba(211, 198, 170, 0.9);
+    color: rgba(220, 210, 185, 0.95);
 }
 
 .detail-meta {
     font-size: 10px;
-    color: rgba(157, 169, 160, 0.4);
+    color: rgba(170, 178, 172, 0.6);
 }
 
 .detail-field-row {
@@ -103,29 +103,29 @@
 }
 
 .detail-field-row:hover {
-    background-color: rgba(55, 65, 73, 0.5);
+    background-color: rgba(52, 62, 70, 0.6);
 }
 
 .detail-field-label {
     font-size: 10px;
     font-weight: 500;
-    color: rgba(157, 169, 160, 0.45);
+    color: rgba(170, 178, 172, 0.65);
 }
 
 .detail-field-value {
     font-size: 13px;
-    color: rgba(211, 198, 170, 0.85);
+    color: rgba(220, 210, 185, 0.92);
 }
 
 .totp-section {
-    background: rgba(127, 187, 179, 0.04);
+    background: rgba(127, 187, 179, 0.06);
     border-radius: 8px;
     padding: 8px 10px;
     transition: background-color 100ms ease;
 }
 
 .totp-section:hover {
-    background: rgba(127, 187, 179, 0.07);
+    background: rgba(127, 187, 179, 0.1);
 }
 
 .totp-code {
@@ -133,37 +133,37 @@
     font-size: 22px;
     font-weight: 600;
     letter-spacing: 2px;
-    color: rgba(211, 198, 170, 0.9);
+    color: rgba(220, 210, 185, 0.95);
 }
 
 .totp-remaining {
     font-size: 10px;
-    color: rgba(157, 169, 160, 0.4);
+    color: rgba(170, 178, 172, 0.55);
 }
 
 .totp-progress trough {
     min-height: 4px;
     border-radius: 2px;
-    background: rgba(79, 88, 94, 0.2);
+    background: rgba(79, 88, 94, 0.25);
     border: none;
     outline: none;
 }
 
 .totp-progress trough block.filled {
-    background-color: rgba(127, 187, 179, 0.7);
+    background-color: rgba(127, 187, 179, 0.8);
     border-radius: 2px;
 }
 
 .totp-ok trough block.filled {
-    background-color: rgba(167, 192, 128, 0.8);
+    background-color: rgba(167, 192, 128, 0.9);
 }
 
 .totp-warn trough block.filled {
-    background-color: rgba(219, 188, 127, 0.8);
+    background-color: rgba(219, 188, 127, 0.9);
 }
 
 .totp-danger trough block.filled {
-    background-color: rgba(230, 126, 128, 0.8);
+    background-color: rgba(230, 126, 128, 0.9);
 }
 
 .totp-progress trough block.empty {
@@ -171,18 +171,18 @@
 }
 
 .copied-feedback {
-    color: rgba(127, 187, 179, 0.8);
+    color: rgba(127, 187, 179, 0.9);
     font-size: 10px;
 }
 
 .unlock-icon {
-    color: rgba(127, 187, 179, 0.4);
+    color: rgba(127, 187, 179, 0.55);
 }
 
 .unlock-title {
     font-size: 13px;
     font-weight: 400;
-    color: rgba(211, 198, 170, 0.6);
+    color: rgba(220, 210, 185, 0.7);
 }
 
 levelbar trough {
@@ -192,12 +192,12 @@ levelbar trough {
 }
 
 levelbar trough block.filled {
-    background-color: rgba(127, 187, 179, 0.7);
+    background-color: rgba(127, 187, 179, 0.8);
     border-radius: 2px;
 }
 
 levelbar trough block.empty {
-    background-color: rgba(79, 88, 94, 0.15);
+    background-color: rgba(79, 88, 94, 0.2);
     border-radius: 2px;
 }
 
