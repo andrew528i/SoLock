@@ -785,16 +785,17 @@ static void on_add_save_clicked(GtkButton *button, gpointer data)
             site_value = val;
     }
 
+    json_builder_end_object(builder);
+
     if (!name || !*name) {
         if (site_value)
             name = site_value;
         else {
+            json_node_unref(json_builder_get_root(builder));
             g_object_unref(builder);
             return;
         }
     }
-
-    json_builder_end_object(builder);
     JsonNode *fields_node = json_builder_get_root(builder);
     g_object_unref(builder);
 

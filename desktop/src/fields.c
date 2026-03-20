@@ -301,8 +301,12 @@ static gboolean on_key_pressed(GtkEventControllerKey *ctrl, guint keyval,
             int totp_idx = dd->field_count;
             if (dd->totp_code_label && totp_idx < LABEL_CHARS_LEN && LABEL_CHARS[totp_idx] == ch) {
                 TotpClickData *tcd = g_object_get_data(G_OBJECT(dd->totp_code_label), "totp-click-data");
-                if (tcd && tcd->code && *tcd->code)
+                if (tcd && tcd->code && *tcd->code) {
+                    SolockConfig *config = solock_app_get_config(dd->app);
+                    int clear = solock_config_get_clipboard_clear_seconds(config);
+                    solock_clipboard_copy(tcd->code, clear, NULL);
                     do_paste_value(dd->app, tcd->code);
+                }
                 return TRUE;
             }
         }
