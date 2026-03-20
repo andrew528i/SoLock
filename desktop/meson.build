@@ -28,6 +28,8 @@ sources = files(
   'src/clipboard.c',
 )
 
+add_project_arguments('-D_GNU_SOURCE', language: 'c')
+
 executable('solock-desktop',
   sources,
   dependencies: [gtk4, adw, layer_shell, json_glib],

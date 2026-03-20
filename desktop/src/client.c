@@ -1,8 +1,9 @@
 #include "solock-desktop.h"
 #include <gio/gunixsocketaddress.h>
-#include <string.h>
+#include <sys/types.h>
 #include <signal.h>
 #include <unistd.h>
+#include <string.h>
 
 struct _SolockClient {
     char    *sock_path;
@@ -27,7 +28,6 @@ void solock_client_free(SolockClient *c)
 
 gboolean solock_client_start_serve(SolockClient *c, GError **error)
 {
-    gchar *stdout_buf = NULL;
     gchar *argv[] = { (gchar *)SOLOCK_BINARY, "serve", NULL };
     gint stdout_fd;
 
