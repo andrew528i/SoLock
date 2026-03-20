@@ -91,6 +91,7 @@ static void on_search_changed(GtkEditable *editable, gpointer data)
 {
     (void)editable;
     SearchData *sd = data;
+    gtk_widget_add_css_class(sd->list_box, "keyboard-nav");
     refresh_entries(sd);
 }
 

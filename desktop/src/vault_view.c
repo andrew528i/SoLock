@@ -1104,7 +1104,7 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
 
     vd->list_box = gtk_list_box_new();
     gtk_list_box_set_selection_mode(GTK_LIST_BOX(vd->list_box), GTK_SELECTION_SINGLE);
-    gtk_widget_add_css_class(vd->list_box, "boxed-list");
+    /* no extra class - ScrolledWindow provides view bg */
     g_signal_connect(vd->list_box, "row-activated", G_CALLBACK(on_entry_row_activated), vd);
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scroll), vd->list_box);
     gtk_box_append(GTK_BOX(list_panel), scroll);
