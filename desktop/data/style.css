@@ -216,3 +216,7 @@ levelbar:focus-visible {
 .totp-danger trough block.high {
     background-color: rgba(230, 126, 128, 0.9);
 }
+
+preferencesgroup list row {
+    padding: 4px 8px;
+}

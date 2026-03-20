@@ -175,7 +175,7 @@ static GVariant *build_menu_layout(void)
         build_menu_item_variant(MENU_ID_LOCK, lock_label, NULL, TRUE, TRUE));
 
     g_variant_builder_add(&children, "v",
-        build_menu_item_variant(MENU_ID_MANAGE, "Manage Vault", NULL, TRUE, TRUE));
+        build_menu_item_variant(MENU_ID_MANAGE, "Manage Vault", NULL, !tray->locked, TRUE));
 
     g_variant_builder_add(&children, "v",
         build_menu_item_variant(MENU_ID_SEP2, NULL, "separator", TRUE, TRUE));
@@ -360,7 +360,7 @@ static void menu_method_call(GDBusConnection *conn, const char *sender,
             }
             case MENU_ID_MANAGE:
                 g_variant_builder_add(&props, "{sv}", "label", g_variant_new_string("Manage Vault"));
-                g_variant_builder_add(&props, "{sv}", "enabled", g_variant_new_boolean(TRUE));
+                g_variant_builder_add(&props, "{sv}", "enabled", g_variant_new_boolean(!tray->locked));
                 g_variant_builder_add(&props, "{sv}", "visible", g_variant_new_boolean(TRUE));
                 break;
             case MENU_ID_QUIT:
@@ -394,7 +394,12 @@ static void menu_method_call(GDBusConnection *conn, const char *sender,
             default: val = g_variant_new_string(""); break;
             }
         } else if (g_strcmp0(prop_name, "enabled") == 0) {
-            val = g_variant_new_boolean(prop_id != MENU_ID_STATUS);
+            if (prop_id == MENU_ID_STATUS)
+                val = g_variant_new_boolean(FALSE);
+            else if (prop_id == MENU_ID_MANAGE)
+                val = g_variant_new_boolean(!tray->locked);
+            else
+                val = g_variant_new_boolean(TRUE);
         } else if (g_strcmp0(prop_name, "visible") == 0) {
             val = g_variant_new_boolean(TRUE);
         } else if (g_strcmp0(prop_name, "type") == 0) {

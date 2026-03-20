@@ -340,8 +340,7 @@ static void vault_refresh_entries(VaultData *vd)
 
         GtkWidget *text_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
         gtk_widget_set_hexpand(text_box, TRUE);
-        if (!subtitle || !*subtitle)
-            gtk_widget_set_valign(text_box, GTK_ALIGN_CENTER);
+        gtk_widget_set_valign(text_box, GTK_ALIGN_CENTER);
 
         GtkWidget *name_label = gtk_label_new(name);
         gtk_label_set_xalign(GTK_LABEL(name_label), 0);
@@ -474,6 +473,7 @@ static void vault_show_detail(VaultData *vd, JsonObject *obj)
     GtkWidget *group = adw_preferences_group_new();
     gtk_widget_set_margin_start(group, 4);
     gtk_widget_set_margin_end(group, 4);
+    gtk_widget_set_margin_top(group, 8);
 
     GList *members = json_object_get_members(fields);
     for (GList *l = members; l; l = l->next) {
@@ -524,6 +524,13 @@ static void vault_show_detail(VaultData *vd, JsonObject *obj)
 
         adw_action_row_set_subtitle(ADW_ACTION_ROW(totp_row), "--- ---");
 
+        vd->detail_totp_bar = gtk_level_bar_new_for_interval(0.0, 1.0);
+        gtk_level_bar_set_value(GTK_LEVEL_BAR(vd->detail_totp_bar), 1.0);
+        gtk_widget_add_css_class(vd->detail_totp_bar, "totp-progress");
+        gtk_widget_set_size_request(vd->detail_totp_bar, 60, -1);
+        gtk_widget_set_valign(vd->detail_totp_bar, GTK_ALIGN_CENTER);
+        adw_action_row_add_suffix(ADW_ACTION_ROW(totp_row), vd->detail_totp_bar);
+
         GtkWidget *totp_copy_btn = gtk_button_new_from_icon_name("edit-copy-symbolic");
         gtk_widget_add_css_class(totp_copy_btn, "flat");
         gtk_widget_set_valign(totp_copy_btn, GTK_ALIGN_CENTER);
@@ -533,22 +540,12 @@ static void vault_show_detail(VaultData *vd, JsonObject *obj)
 
         adw_preferences_group_add(ADW_PREFERENCES_GROUP(group), totp_row);
 
-        vd->detail_totp_bar = gtk_level_bar_new_for_interval(0.0, 1.0);
-        gtk_level_bar_set_value(GTK_LEVEL_BAR(vd->detail_totp_bar), 1.0);
-        gtk_widget_add_css_class(vd->detail_totp_bar, "totp-progress");
-        gtk_widget_set_margin_top(vd->detail_totp_bar, 4);
-        gtk_widget_set_margin_start(vd->detail_totp_bar, 8);
-        gtk_widget_set_margin_end(vd->detail_totp_bar, 8);
-
         vd->detail_totp_secret = g_strdup(secret);
         vault_update_totp(vd);
         vd->detail_totp_timer = g_timeout_add_seconds(1, vault_update_totp, vd);
     }
 
     gtk_box_append(GTK_BOX(vd->detail_fields_box), group);
-
-    if (vd->detail_totp_bar)
-        gtk_box_append(GTK_BOX(vd->detail_fields_box), vd->detail_totp_bar);
 
     gtk_widget_set_visible(vd->detail_action_bar, TRUE);
     gtk_stack_set_visible_child_name(GTK_STACK(vd->detail_stack), "detail");
@@ -1075,6 +1072,7 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
     GtkWidget *empty_icon = gtk_image_new_from_icon_name("dialog-password-symbolic");
     gtk_image_set_pixel_size(GTK_IMAGE(empty_icon), 48);
     gtk_widget_add_css_class(empty_icon, "dim-label");
+    gtk_widget_set_margin_bottom(empty_icon, 8);
     gtk_box_append(GTK_BOX(vd->detail_empty), empty_icon);
 
     GtkWidget *stats_group = adw_preferences_group_new();

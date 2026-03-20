@@ -62,6 +62,8 @@ func (h *Handler) Handle(req *Request) *Response {
 		return h.handleInitVault(req)
 	case "reset_vault":
 		return h.handleResetVault(req)
+	case "clear_local_data":
+		return h.handleClearLocalData(req)
 	case "generate_password":
 		return h.handleGeneratePassword(req)
 	case "generate_totp":
@@ -341,6 +343,20 @@ func (h *Handler) handleResetVault(req *Request) *Response {
 	defer cancel()
 
 	if err := h.app.ResetVault.Execute(ctx); err != nil {
+		return errorResponse(req.ID, ErrCodeInternal, err.Error())
+	}
+	return successResponse(req.ID, map[string]bool{"ok": true})
+}
+
+func (h *Handler) handleClearLocalData(req *Request) *Response {
+	if h.app.ClearLocalData == nil {
+		return errorResponse(req.ID, ErrCodeInternal, "not connected")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := h.app.ClearLocalData.Execute(ctx); err != nil {
 		return errorResponse(req.ID, ErrCodeInternal, err.Error())
 	}
 	return successResponse(req.ID, map[string]bool{"ok": true})

@@ -160,8 +160,18 @@ static void on_refresh_clicked(GtkButton *button, gpointer data)
 
 static void on_clear_local_db_clicked(GtkButton *button, gpointer data)
 {
-    (void)button; (void)data;
-    g_message("Clear Local DB: not yet implemented");
+    (void)button;
+    DashboardData *dd = data;
+    SolockClient *client = solock_app_get_client(dd->app);
+    GError *error = NULL;
+    JsonNode *result = solock_client_call(client, "clear_local_data", NULL, &error);
+    if (result)
+        json_node_unref(result);
+    if (error) {
+        g_warning("Clear failed: %s", error->message);
+        g_error_free(error);
+    }
+    dashboard_refresh(dd);
 }
 
 static GtkWidget *make_action_row(const char *title, const char *subtitle)
@@ -184,7 +194,7 @@ static GtkWidget *make_section_label(const char *text)
     gtk_label_set_xalign(GTK_LABEL(label), 0);
     gtk_widget_set_margin_start(label, 4);
     gtk_widget_set_margin_top(label, 16);
-    gtk_widget_set_margin_bottom(label, 6);
+    gtk_widget_set_margin_bottom(label, 8);
     return label;
 }
 
