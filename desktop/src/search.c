@@ -304,7 +304,7 @@ static void refresh_entries(SearchData *sd)
         gtk_image_set_pixel_size(GTK_IMAGE(icon), 18);
         gtk_widget_add_css_class(icon, "entry-icon");
         gtk_widget_set_valign(icon, GTK_ALIGN_CENTER);
-        gtk_widget_set_margin_start(icon, 2);
+        gtk_widget_set_margin_start(icon, 8);
         gtk_box_append(GTK_BOX(row_box), icon);
 
         GtkWidget *text_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);

@@ -20,16 +20,6 @@ static void on_sidebar_row_selected(GtkListBox *list, GtkListBoxRow *row, gpoint
     MainWindowData *mwd = data;
     if (!row) return;
     int idx = gtk_list_box_row_get_index(row);
-
-    if (idx == 4) {
-        GApplication *gapp = G_APPLICATION(gtk_window_get_application(mwd->window));
-        if (gapp)
-            g_application_quit(gapp);
-        else
-            gtk_window_close(mwd->window);
-        return;
-    }
-
     if (idx >= 0 && idx < 3) {
         gtk_stack_set_visible_child_name(mwd->stack, section_names[idx]);
         adw_window_title_set_title(ADW_WINDOW_TITLE(mwd->content_title),
@@ -42,6 +32,7 @@ GtkWidget *solock_main_window_new(SolockApp *app)
     GtkWidget *win = adw_application_window_new(GTK_APPLICATION(app));
     gtk_window_set_title(GTK_WINDOW(win), "SoLock");
     gtk_window_set_default_size(GTK_WINDOW(win), 850, 550);
+    gtk_window_set_deletable(GTK_WINDOW(win), FALSE);
 
     AdwNavigationSplitView *split = ADW_NAVIGATION_SPLIT_VIEW(adw_navigation_split_view_new());
 
@@ -52,12 +43,12 @@ GtkWidget *solock_main_window_new(SolockApp *app)
     adw_header_bar_set_title_widget(ADW_HEADER_BAR(sidebar_header),
                                      GTK_WIDGET(adw_window_title_new("SoLock", "")));
     adw_header_bar_set_show_end_title_buttons(ADW_HEADER_BAR(sidebar_header), FALSE);
+    adw_header_bar_set_show_start_title_buttons(ADW_HEADER_BAR(sidebar_header), FALSE);
     gtk_box_append(GTK_BOX(sidebar_box), sidebar_header);
 
     GtkWidget *sidebar_list = gtk_list_box_new();
     gtk_widget_add_css_class(sidebar_list, "navigation-sidebar");
     gtk_list_box_set_selection_mode(GTK_LIST_BOX(sidebar_list), GTK_SELECTION_SINGLE);
-    gtk_widget_set_vexpand(sidebar_list, TRUE);
 
     for (int i = 0; i < 3; i++) {
         GtkWidget *row_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
@@ -77,25 +68,6 @@ GtkWidget *solock_main_window_new(SolockApp *app)
         gtk_list_box_append(GTK_LIST_BOX(sidebar_list), row_box);
     }
 
-    /* separator row (index 3) - invisible spacer with vexpand */
-    GtkWidget *sep_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-    gtk_widget_set_vexpand(sep_box, TRUE);
-    gtk_list_box_append(GTK_LIST_BOX(sidebar_list), sep_box);
-
-    /* quit row (index 4) */
-    GtkWidget *quit_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
-    gtk_widget_set_margin_start(quit_row, 14);
-    gtk_widget_set_margin_end(quit_row, 14);
-    gtk_widget_set_margin_top(quit_row, 12);
-    gtk_widget_set_margin_bottom(quit_row, 12);
-    GtkWidget *quit_icon = gtk_image_new_from_icon_name("application-exit-symbolic");
-    gtk_image_set_pixel_size(GTK_IMAGE(quit_icon), 16);
-    gtk_box_append(GTK_BOX(quit_row), quit_icon);
-    GtkWidget *quit_text = gtk_label_new("Quit");
-    gtk_label_set_xalign(GTK_LABEL(quit_text), 0);
-    gtk_box_append(GTK_BOX(quit_row), quit_text);
-    gtk_list_box_append(GTK_LIST_BOX(sidebar_list), quit_row);
-
     gtk_box_append(GTK_BOX(sidebar_box), sidebar_list);
 
     AdwNavigationPage *sidebar_page = adw_navigation_page_new(sidebar_box, "Navigation");
@@ -107,6 +79,7 @@ GtkWidget *solock_main_window_new(SolockApp *app)
     GtkWidget *content_title = GTK_WIDGET(adw_window_title_new(section_titles[0], ""));
     adw_header_bar_set_title_widget(ADW_HEADER_BAR(content_header), content_title);
     adw_header_bar_set_show_start_title_buttons(ADW_HEADER_BAR(content_header), FALSE);
+    adw_header_bar_set_show_end_title_buttons(ADW_HEADER_BAR(content_header), FALSE);
     gtk_box_append(GTK_BOX(content_box), content_header);
 
     GtkWidget *content_stack = gtk_stack_new();
@@ -138,13 +111,6 @@ GtkWidget *solock_main_window_new(SolockApp *app)
     GtkListBoxRow *first = gtk_list_box_get_row_at_index(GTK_LIST_BOX(sidebar_list), 0);
     if (first)
         gtk_list_box_select_row(GTK_LIST_BOX(sidebar_list), first);
-
-    /* make separator row non-selectable */
-    GtkListBoxRow *sep_row = gtk_list_box_get_row_at_index(GTK_LIST_BOX(sidebar_list), 3);
-    if (sep_row) {
-        gtk_list_box_row_set_selectable(sep_row, FALSE);
-        gtk_list_box_row_set_activatable(sep_row, FALSE);
-    }
 
     adw_application_window_set_content(ADW_APPLICATION_WINDOW(win), GTK_WIDGET(split));
 
