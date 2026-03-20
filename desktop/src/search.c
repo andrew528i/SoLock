@@ -280,6 +280,9 @@ static void refresh_entries(SearchData *sd)
 
         GtkWidget *text_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
         gtk_widget_set_hexpand(text_box, TRUE);
+        gboolean has_subtitle = subtitle && *subtitle;
+        if (!has_subtitle)
+            gtk_widget_set_valign(text_box, GTK_ALIGN_CENTER);
 
         GtkWidget *name_label = gtk_label_new(name);
         gtk_widget_add_css_class(name_label, "entry-name");
@@ -287,10 +290,9 @@ static void refresh_entries(SearchData *sd)
         gtk_label_set_ellipsize(GTK_LABEL(name_label), PANGO_ELLIPSIZE_END);
         gtk_box_append(GTK_BOX(text_box), name_label);
 
-        if (subtitle && *subtitle) {
+        if (has_subtitle) {
             GtkWidget *sub_label = gtk_label_new(subtitle);
             gtk_widget_add_css_class(sub_label, "entry-subtitle");
-            gtk_widget_add_css_class(sub_label, "dim-label");
             gtk_label_set_xalign(GTK_LABEL(sub_label), 0);
             gtk_label_set_ellipsize(GTK_LABEL(sub_label), PANGO_ELLIPSIZE_END);
             gtk_box_append(GTK_BOX(text_box), sub_label);
@@ -299,11 +301,10 @@ static void refresh_entries(SearchData *sd)
         gtk_box_append(GTK_BOX(row_box), text_box);
 
         if (has_totp) {
-            GtkWidget *totp_dot = gtk_drawing_area_new();
-            gtk_widget_add_css_class(totp_dot, "totp-dot");
-            gtk_widget_set_size_request(totp_dot, 8, 8);
-            gtk_widget_set_valign(totp_dot, GTK_ALIGN_CENTER);
-            gtk_box_append(GTK_BOX(row_box), totp_dot);
+            GtkWidget *totp_indicator = gtk_label_new("\xe2\x97\x8f");
+            gtk_widget_add_css_class(totp_indicator, "totp-indicator");
+            gtk_widget_set_valign(totp_indicator, GTK_ALIGN_CENTER);
+            gtk_box_append(GTK_BOX(row_box), totp_indicator);
         }
 
         gtk_list_box_append(GTK_LIST_BOX(sd->list_box), row_box);

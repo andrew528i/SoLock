@@ -62,10 +62,11 @@ GtkWidget *solock_unlock_view_new(SolockApp *app)
 
     GtkWidget *icon = gtk_image_new_from_icon_name("system-lock-screen-symbolic");
     gtk_image_set_pixel_size(GTK_IMAGE(icon), 48);
+    gtk_widget_add_css_class(icon, "unlock-icon");
     gtk_box_append(GTK_BOX(box), icon);
 
     GtkWidget *title = gtk_label_new("SoLock");
-    gtk_widget_add_css_class(title, "title-4");
+    gtk_widget_add_css_class(title, "unlock-title");
     gtk_box_append(GTK_BOX(box), title);
 
     GtkWidget *entry = gtk_password_entry_new();

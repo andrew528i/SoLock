@@ -15,12 +15,13 @@ extern void          solock_app_show_main_window(SolockApp *app);
 
 enum {
     MENU_ID_ROOT = 0,
-    MENU_ID_STATUS = 1,
+    MENU_ID_SHOW = 1,
     MENU_ID_SEP1 = 2,
-    MENU_ID_LOCK = 3,
-    MENU_ID_MANAGE = 4,
-    MENU_ID_SEP2 = 5,
-    MENU_ID_QUIT = 6,
+    MENU_ID_STATUS = 3,
+    MENU_ID_LOCK = 4,
+    MENU_ID_MANAGE = 5,
+    MENU_ID_SEP2 = 6,
+    MENU_ID_QUIT = 7,
 };
 
 typedef struct {
@@ -159,12 +160,15 @@ static GVariant *build_menu_layout(void)
     GVariantBuilder children;
     g_variant_builder_init(&children, G_VARIANT_TYPE("av"));
 
-    const char *status_text = tray->locked ? "Locked" : "Unlocked";
     g_variant_builder_add(&children, "v",
-        build_menu_item_variant(MENU_ID_STATUS, status_text, NULL, FALSE, TRUE));
+        build_menu_item_variant(MENU_ID_SHOW, "Show Vault", NULL, TRUE, TRUE));
 
     g_variant_builder_add(&children, "v",
         build_menu_item_variant(MENU_ID_SEP1, NULL, "separator", TRUE, TRUE));
+
+    const char *status_text = tray->locked ? "Locked" : "Unlocked";
+    g_variant_builder_add(&children, "v",
+        build_menu_item_variant(MENU_ID_STATUS, status_text, NULL, FALSE, TRUE));
 
     const char *lock_label = tray->locked ? "Unlock" : "Lock";
     g_variant_builder_add(&children, "v",
@@ -185,6 +189,9 @@ static GVariant *build_menu_layout(void)
 static void handle_menu_event(int id)
 {
     switch (id) {
+    case MENU_ID_SHOW:
+        solock_popup_toggle(solock_app_get_popup(tray->app));
+        break;
     case MENU_ID_LOCK:
         if (tray->locked) {
             solock_popup_show(solock_app_get_popup(tray->app));
@@ -244,7 +251,7 @@ static GVariant *sni_get_property(GDBusConnection *conn, const char *sender,
     if (g_strcmp0(property, "Menu") == 0)
         return g_variant_new_object_path(DBUSMENU_PATH);
     if (g_strcmp0(property, "ItemIsMenu") == 0)
-        return g_variant_new_boolean(FALSE);
+        return g_variant_new_boolean(TRUE);
     if (g_strcmp0(property, "ToolTip") == 0) {
         const char *tooltip = tray->locked ? "SoLock - Locked" : "SoLock - Unlocked";
         GVariantBuilder pixmaps;

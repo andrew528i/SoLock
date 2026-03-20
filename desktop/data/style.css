@@ -1,20 +1,20 @@
 .popup-window {
-    background-color: alpha(@window_bg_color, 0.92);
+    background-color: rgba(45, 53, 59, 0.94);
     border-radius: 16px;
-    border: 1px solid alpha(@borders, 0.15);
+    border: 1px solid rgba(127, 187, 179, 0.12);
 }
 
 .search-input {
-    background: alpha(@view_bg_color, 0.5);
+    background: rgba(52, 63, 68, 0.7);
     border-radius: 10px;
     padding: 8px 12px;
     font-size: 14px;
-    border: 1px solid alpha(@borders, 0.1);
+    border: 1px solid rgba(79, 88, 94, 0.3);
 }
 
 .search-input:focus {
-    background: alpha(@view_bg_color, 0.7);
-    border-color: alpha(@accent_color, 0.4);
+    background: rgba(52, 63, 68, 0.9);
+    border-color: rgba(127, 187, 179, 0.4);
 }
 
 .entry-list {
@@ -23,89 +23,98 @@
 
 .entry-list row {
     border-radius: 10px;
-    margin: 2px 8px;
+    margin: 1px 8px;
+    padding: 0;
     transition: background-color 150ms ease;
 }
 
 .entry-list row:hover {
-    background-color: alpha(@accent_color, 0.08);
+    background-color: rgba(127, 187, 179, 0.06);
 }
 
 .entry-list row:selected {
-    background-color: alpha(@accent_color, 0.15);
+    background-color: rgba(127, 187, 179, 0.12);
 }
 
 .entry-row {
-    min-height: 24px;
+    min-height: 28px;
 }
 
 .entry-name {
     font-weight: 600;
     font-size: 14px;
+    color: rgba(211, 198, 170, 0.95);
 }
 
 .entry-subtitle {
-    font-size: 12px;
-    opacity: 0.7;
+    font-size: 11.5px;
+    color: rgba(157, 169, 160, 0.7);
 }
 
 .entry-icon {
-    opacity: 0.6;
+    color: rgba(157, 169, 160, 0.5);
 }
 
-.totp-dot {
-    background-color: @accent_color;
-    border-radius: 4px;
-    min-width: 8px;
-    min-height: 8px;
+.totp-indicator {
+    color: rgba(127, 187, 179, 0.8);
+    font-size: 8px;
 }
 
 .label-hint {
     font-weight: 700;
-    font-size: 12px;
+    font-size: 11px;
     color: @accent_color;
-    background: alpha(@accent_color, 0.12);
+    background: rgba(127, 187, 179, 0.15);
     border-radius: 4px;
-    min-width: 20px;
-    min-height: 20px;
+    min-width: 18px;
+    min-height: 18px;
     padding: 0 4px;
+}
+
+.detail-title {
+    font-weight: 600;
+    font-size: 18px;
+    color: rgba(211, 198, 170, 0.95);
 }
 
 .detail-type {
     font-size: 12px;
+    color: rgba(157, 169, 160, 0.6);
 }
 
 .detail-field-row {
-    border-radius: 8px;
-    padding: 8px 12px;
+    border-radius: 10px;
+    padding: 10px 14px;
     margin: 2px 0;
     transition: background-color 150ms ease;
 }
 
 .detail-field-row:hover {
-    background-color: alpha(@view_bg_color, 0.5);
+    background-color: rgba(52, 63, 68, 0.6);
 }
 
 .detail-field-label {
     font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
+    font-weight: 500;
+    color: rgba(157, 169, 160, 0.6);
+    letter-spacing: 0.3px;
 }
 
 .detail-field-value {
     font-size: 14px;
+    color: rgba(211, 198, 170, 0.9);
     margin-top: 2px;
 }
 
 .totp-section {
-    background: alpha(@accent_color, 0.06);
+    background: rgba(127, 187, 179, 0.06);
     border-radius: 12px;
-    padding: 12px 16px;
+    padding: 14px 16px;
     transition: background-color 150ms ease;
 }
 
 .totp-section:hover {
-    background: alpha(@accent_color, 0.1);
+    background: rgba(127, 187, 179, 0.1);
 }
 
 .totp-code {
@@ -113,12 +122,18 @@
     font-size: 28px;
     font-weight: 700;
     letter-spacing: 4px;
+    color: rgba(211, 198, 170, 0.95);
+}
+
+.totp-remaining {
+    font-size: 12px;
+    color: rgba(157, 169, 160, 0.5);
 }
 
 .totp-progress trough {
     min-height: 3px;
     border-radius: 2px;
-    background: alpha(@borders, 0.15);
+    background: rgba(79, 88, 94, 0.3);
 }
 
 .totp-progress trough block.filled {
@@ -133,7 +148,16 @@
 .copied-feedback {
     color: @accent_color;
     font-weight: 600;
-    transition: color 150ms ease;
+}
+
+.unlock-icon {
+    color: rgba(127, 187, 179, 0.6);
+}
+
+.unlock-title {
+    font-size: 15px;
+    font-weight: 500;
+    color: rgba(211, 198, 170, 0.8);
 }
 
 levelbar trough block.filled {
@@ -142,6 +166,6 @@ levelbar trough block.filled {
 }
 
 levelbar trough block.empty {
-    background-color: alpha(@borders, 0.15);
+    background-color: rgba(79, 88, 94, 0.2);
     border-radius: 2px;
 }
