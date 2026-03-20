@@ -1004,7 +1004,6 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
     vd->app = app;
 
     GtkWidget *paned = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
-    gtk_widget_add_css_class(paned, "background");
     gtk_paned_set_position(GTK_PANED(paned), 320);
     gtk_paned_set_shrink_start_child(GTK_PANED(paned), FALSE);
     gtk_paned_set_shrink_end_child(GTK_PANED(paned), FALSE);
