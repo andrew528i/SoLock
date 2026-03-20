@@ -391,7 +391,10 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
         site_value = json_object_get_string_member(fields, "site");
 
     GtkWidget *header = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
-    gtk_widget_set_margin_bottom(header, 10);
+    gtk_widget_set_margin_start(header, 10);
+    gtk_widget_set_margin_end(header, 10);
+    gtk_widget_set_margin_top(header, 2);
+    gtk_widget_set_margin_bottom(header, 6);
 
     GtkWidget *title_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
     gtk_widget_set_hexpand(title_box, TRUE);

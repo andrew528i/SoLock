@@ -32,7 +32,7 @@
 
 .entry-list {
     background: transparent;
-    padding: 6px 0;
+    padding: 2px 0;
 }
 
 .entry-list row {
@@ -80,7 +80,7 @@
     padding: 0;
     margin-right: 0;
     opacity: 0;
-    transition: min-width 150ms ease, padding 150ms ease, opacity 150ms ease, margin-right 150ms ease;
+    transition: all 100ms ease;
 }
 
 .label-hint-visible {
@@ -214,11 +214,15 @@ preferencesgroup list row .subtitle {
 }
 
 preferencesgroup {
-    margin-top: 6px;
+    margin-top: 8px;
 }
 
-.navigation-sidebar {
-    background-color: rgba(35, 42, 48, 1);
+preferencesgroup > box > label {
+    margin-bottom: 6px;
+}
+
+.sidebar-unified {
+    background-color: @headerbar_bg_color;
 }
 
 headerbar {
