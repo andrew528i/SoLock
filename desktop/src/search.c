@@ -279,7 +279,7 @@ static void refresh_entries(SearchData *sd)
                 subtitle = json_object_get_string_member(fields, "cardholder");
         }
 
-        GtkWidget *row_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+        GtkWidget *row_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
         gtk_widget_add_css_class(row_box, "entry-row");
         gtk_widget_set_margin_start(row_box, 4);
         gtk_widget_set_margin_end(row_box, 4);
@@ -304,7 +304,8 @@ static void refresh_entries(SearchData *sd)
         gtk_image_set_pixel_size(GTK_IMAGE(icon), 18);
         gtk_widget_add_css_class(icon, "entry-icon");
         gtk_widget_set_valign(icon, GTK_ALIGN_CENTER);
-        gtk_widget_set_margin_start(icon, 8);
+        gtk_widget_set_margin_start(icon, 15);
+        gtk_widget_set_margin_end(icon, 8);
         gtk_box_append(GTK_BOX(row_box), icon);
 
         GtkWidget *text_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);

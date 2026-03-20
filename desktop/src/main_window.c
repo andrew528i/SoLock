@@ -49,6 +49,7 @@ GtkWidget *solock_main_window_new(SolockApp *app)
     GtkWidget *sidebar_list = gtk_list_box_new();
     gtk_widget_add_css_class(sidebar_list, "navigation-sidebar");
     gtk_list_box_set_selection_mode(GTK_LIST_BOX(sidebar_list), GTK_SELECTION_SINGLE);
+    gtk_widget_set_vexpand(sidebar_list, TRUE);
 
     for (int i = 0; i < 3; i++) {
         GtkWidget *row_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
