@@ -462,7 +462,15 @@ static void vault_show_detail(VaultData *vd, JsonObject *obj)
     vd->selected_id = g_strdup(id);
 
     gtk_label_set_text(GTK_LABEL(vd->detail_name_label), name);
-    gtk_label_set_text(GTK_LABEL(vd->detail_type_label), type_display_name(type));
+
+    gint64 slot = json_object_get_int_member_with_default(obj, "slot_index", -1);
+    char *type_with_slot = NULL;
+    if (slot >= 0)
+        type_with_slot = g_strdup_printf("%s  #%lld", type_display_name(type), (long long)slot);
+    else
+        type_with_slot = g_strdup(type_display_name(type));
+    gtk_label_set_text(GTK_LABEL(vd->detail_type_label), type_with_slot);
+    g_free(type_with_slot);
 
     vault_clear_container(vd->detail_fields_box);
 
@@ -1004,7 +1012,6 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
     vd->app = app;
 
     GtkWidget *paned = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
-    gtk_widget_add_css_class(paned, "view");
     gtk_paned_set_position(GTK_PANED(paned), 320);
     gtk_paned_set_shrink_start_child(GTK_PANED(paned), FALSE);
     gtk_paned_set_shrink_end_child(GTK_PANED(paned), FALSE);
@@ -1059,7 +1066,10 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
     gtk_stack_add_named(GTK_STACK(vd->add_stack), build_add_form(vd), "add");
     gtk_stack_set_visible_child_name(GTK_STACK(vd->add_stack), "list");
 
-    gtk_paned_set_start_child(GTK_PANED(paned), vd->add_stack);
+    GtkWidget *left_scroll = gtk_scrolled_window_new();
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(left_scroll), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
+    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(left_scroll), vd->add_stack);
+    gtk_paned_set_start_child(GTK_PANED(paned), left_scroll);
 
     /* right: detail panel */
     vd->detail_stack = gtk_stack_new();

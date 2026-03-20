@@ -66,8 +66,9 @@
 }
 
 .totp-indicator {
-    font-size: 6px;
+    font-size: 8px;
     color: #7fbbb3;
+    margin-end: 6px;
 }
 
 .label-hint {

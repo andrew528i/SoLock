@@ -23,7 +23,7 @@ static const char *icon_for_type(const char *type)
 {
     if (g_strcmp0(type, "password") == 0) return "dialog-password-symbolic";
     if (g_strcmp0(type, "card") == 0)     return "credit-card-symbolic";
-    if (g_strcmp0(type, "note") == 0)     return "document-text-symbolic";
+    if (g_strcmp0(type, "note") == 0)     return "accessories-text-editor-symbolic";
     if (g_strcmp0(type, "totp") == 0)     return "fingerprint-symbolic";
     return "dialog-password-symbolic";
 }
@@ -295,7 +295,7 @@ static void refresh_entries(SearchData *sd)
         gtk_widget_add_css_class(icon, "entry-icon");
         gtk_widget_set_valign(icon, GTK_ALIGN_CENTER);
         gtk_widget_set_margin_start(icon, 11);
-        gtk_widget_set_margin_end(icon, 8);
+        gtk_widget_set_margin_end(icon, 10);
         gtk_box_append(GTK_BOX(row_box), icon);
 
         char lbl_char = label_char_for_index(i);
@@ -307,6 +307,7 @@ static void refresh_entries(SearchData *sd)
             char lbl_str[2] = { lbl_char, '\0' };
             GtkWidget *hint = gtk_label_new(lbl_str);
             gtk_widget_add_css_class(hint, "label-hint");
+            gtk_widget_add_css_class(hint, "label-hint-visible");
             gtk_revealer_set_child(GTK_REVEALER(hint_revealer), hint);
         }
         gtk_box_append(GTK_BOX(row_box), hint_revealer);
@@ -336,7 +337,7 @@ static void refresh_entries(SearchData *sd)
             GtkWidget *totp_indicator = gtk_label_new("\xe2\x97\x8f");
             gtk_widget_add_css_class(totp_indicator, "totp-indicator");
             gtk_widget_set_valign(totp_indicator, GTK_ALIGN_CENTER);
-            gtk_widget_set_margin_end(totp_indicator, 2);
+            gtk_widget_set_margin_end(totp_indicator, 10);
             gtk_box_append(GTK_BOX(row_box), totp_indicator);
         }
 
