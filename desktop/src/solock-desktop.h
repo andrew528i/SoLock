@@ -74,6 +74,9 @@ GtkWidget    *solock_main_window_new(SolockApp *app);
 /* dashboard.h */
 GtkWidget    *solock_dashboard_view_new(SolockApp *app);
 
+/* vault_view.h */
+GtkWidget    *solock_vault_view_new(SolockApp *app);
+
 /* entry_editor.h */
 GtkWidget    *solock_entry_editor_new(SolockApp *app, JsonNode *entry);
 

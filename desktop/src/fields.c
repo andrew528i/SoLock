@@ -21,6 +21,7 @@ typedef struct {
     GtkWidget *totp_code_label;
     GtkWidget *totp_bar;
     GtkWidget *box;
+    GtkWidget *fields_box;
     gboolean   label_mode;
     FieldInfo *fields;
     int        field_count;
@@ -395,6 +396,7 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
     dd->field_count = field_count;
 
     GtkWidget *fields_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    dd->fields_box = fields_box;
 
     int idx = 0;
     for (GList *l = members; l; l = l->next) {
@@ -475,25 +477,15 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
 
     g_signal_connect(box, "destroy", G_CALLBACK(on_detail_destroy), dd);
     g_signal_connect_swapped(box, "map", G_CALLBACK(gtk_widget_grab_focus), box);
+
+    return box;
 }
 
 static void update_label_hints(DetailData *dd)
 {
-    GtkWidget *fields_scroll = NULL;
-    for (GtkWidget *child = gtk_widget_get_first_child(dd->box);
-         child != NULL;
-         child = gtk_widget_get_next_sibling(child)) {
-        if (GTK_IS_SCROLLED_WINDOW(child)) {
-            fields_scroll = child;
-            break;
-        }
-    }
-    if (!fields_scroll) return;
+    if (!dd->fields_box) return;
 
-    GtkWidget *fields_box = gtk_scrolled_window_get_child(GTK_SCROLLED_WINDOW(fields_scroll));
-    if (!fields_box) return;
-
-    for (GtkWidget *row = gtk_widget_get_first_child(fields_box);
+    for (GtkWidget *row = gtk_widget_get_first_child(dd->fields_box);
          row != NULL;
          row = gtk_widget_get_next_sibling(row)) {
 
