@@ -49,6 +49,16 @@
             gtk4-layer-shell
             json-glib
           ];
+
+          preFixup = ''
+            gappsWrapperArgs+=(
+              --prefix PATH : ${pkgs.lib.makeBinPath [
+                self.packages.${system}.default
+                pkgs.wtype
+                pkgs.wl-clipboard
+              ]}
+            )
+          '';
         };
 
         devShells.default = pkgs.mkShell {

@@ -26,31 +26,60 @@ void solock_client_free(SolockClient *c)
     g_free(c);
 }
 
+static void cleanup_stale_socket(void)
+{
+    const char *home = g_get_home_dir();
+    char *sock_path = g_build_filename(home, ".solock", "solock.sock", NULL);
+    if (g_file_test(sock_path, G_FILE_TEST_EXISTS)) {
+        g_unlink(sock_path);
+    }
+    g_free(sock_path);
+}
+
 gboolean solock_client_start_serve(SolockClient *c, GError **error)
 {
+    cleanup_stale_socket();
+
     gchar *argv[] = { (gchar *)SOLOCK_BINARY, "serve", NULL };
-    gint stdout_fd;
+    gint stdout_fd, stderr_fd;
 
     if (!g_spawn_async_with_pipes(NULL, argv, NULL,
-                                   G_SPAWN_SEARCH_PATH | G_SPAWN_STDERR_TO_DEV_NULL,
+                                   G_SPAWN_SEARCH_PATH,
                                    NULL, NULL, &c->serve_pid,
-                                   NULL, &stdout_fd, NULL, error)) {
+                                   NULL, &stdout_fd, &stderr_fd, error)) {
         return FALSE;
     }
 
     GIOChannel *channel = g_io_channel_unix_new(stdout_fd);
     gchar *line1 = NULL, *line2 = NULL;
     gsize len;
+    GIOStatus s1, s2;
 
-    g_io_channel_read_line(channel, &line1, &len, NULL, error);
-    g_io_channel_read_line(channel, &line2, &len, NULL, error);
+    s1 = g_io_channel_read_line(channel, &line1, &len, NULL, NULL);
+    s2 = g_io_channel_read_line(channel, &line2, &len, NULL, NULL);
     g_io_channel_unref(channel);
     close(stdout_fd);
 
-    if (!line1 || !line2) {
-        g_set_error(error, G_IO_ERROR, G_IO_ERROR_FAILED, "failed to read serve output");
+    if (s1 != G_IO_STATUS_NORMAL || s2 != G_IO_STATUS_NORMAL || !line1 || !line2) {
+        GIOChannel *err_ch = g_io_channel_unix_new(stderr_fd);
+        gchar *err_line = NULL;
+        g_io_channel_read_line(err_ch, &err_line, NULL, NULL, NULL);
+        g_io_channel_unref(err_ch);
+        close(stderr_fd);
+
+        if (err_line) {
+            g_set_error(error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                        "solock serve failed: %s", g_strstrip(err_line));
+            g_free(err_line);
+        } else {
+            g_set_error(error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                        "solock serve failed to start");
+        }
+        g_free(line1);
+        g_free(line2);
         return FALSE;
     }
+    close(stderr_fd);
 
     c->sock_path = g_strstrip(g_strdup(line1));
     c->token = g_strstrip(g_strdup(line2));
