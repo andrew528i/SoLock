@@ -197,5 +197,14 @@ void solock_popup_switch_to_detail(GtkWidget *popup, JsonNode *entry)
 
     popup_data->detail_view = solock_fields_view_new(popup_data->app, entry);
     gtk_stack_add_named(GTK_STACK(popup_data->stack), popup_data->detail_view, "detail");
+
+    GdkDisplay *display = gdk_display_get_default();
+    GdkSeat *seat = gdk_display_get_default_seat(display);
+    GdkDevice *keyboard = gdk_seat_get_keyboard(seat);
+    if (keyboard) {
+        GdkModifierType mods = gdk_device_get_modifier_state(keyboard);
+        if (mods & GDK_CONTROL_MASK)
+            solock_fields_set_label_mode(TRUE);
+    }
     gtk_stack_set_visible_child_name(GTK_STACK(popup_data->stack), "detail");
 }

@@ -548,6 +548,14 @@ void solock_fields_reset_label_mode(void)
     update_label_hints(dd);
 }
 
+void solock_fields_set_label_mode(gboolean mode)
+{
+    if (!active_detail_data) return;
+    DetailData *dd = active_detail_data;
+    dd->label_mode = mode;
+    update_label_hints(dd);
+}
+
 static void update_label_hints(DetailData *dd)
 {
     if (!dd->fields_box) return;

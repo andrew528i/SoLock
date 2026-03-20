@@ -369,6 +369,24 @@ static void vault_refresh_entries(VaultData *vd)
         gtk_list_box_append(GTK_LIST_BOX(vd->list_box), row_box);
     }
 
+    if (len == 0) {
+        GtkWidget *empty_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
+        gtk_widget_set_halign(empty_box, GTK_ALIGN_CENTER);
+        gtk_widget_set_valign(empty_box, GTK_ALIGN_CENTER);
+        gtk_widget_set_margin_top(empty_box, 40);
+
+        GtkWidget *empty_label = gtk_label_new("No entries");
+        gtk_widget_add_css_class(empty_label, "dim-label");
+        gtk_box_append(GTK_BOX(empty_box), empty_label);
+
+        GtkWidget *empty_hint = gtk_label_new("Press + to add");
+        gtk_widget_add_css_class(empty_hint, "dim-label");
+        gtk_widget_add_css_class(empty_hint, "caption");
+        gtk_box_append(GTK_BOX(empty_box), empty_hint);
+
+        gtk_list_box_append(GTK_LIST_BOX(vd->list_box), empty_box);
+    }
+
     vault_update_stats(vd);
 }
 
@@ -1049,6 +1067,9 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
 
     gtk_box_append(GTK_BOX(list_panel), toolbar);
 
+    GtkWidget *list_sep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
+    gtk_box_append(GTK_BOX(list_panel), list_sep);
+
     /* scrollable list */
     GtkWidget *scroll = gtk_scrolled_window_new();
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll),
@@ -1066,7 +1087,6 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
     gtk_stack_add_named(GTK_STACK(vd->add_stack), build_add_form(vd), "add");
     gtk_stack_set_visible_child_name(GTK_STACK(vd->add_stack), "list");
 
-    gtk_widget_add_css_class(vd->add_stack, "view");
     gtk_paned_set_start_child(GTK_PANED(paned), vd->add_stack);
 
     /* right: detail panel */
