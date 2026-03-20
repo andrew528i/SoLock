@@ -1067,7 +1067,7 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
     /* empty state - summary */
     vd->detail_empty = gtk_box_new(GTK_ORIENTATION_VERTICAL, 12);
     gtk_widget_set_valign(vd->detail_empty, GTK_ALIGN_START);
-    gtk_widget_set_halign(vd->detail_empty, GTK_ALIGN_CENTER);
+    gtk_widget_set_halign(vd->detail_empty, GTK_ALIGN_FILL);
     gtk_widget_set_margin_start(vd->detail_empty, 16);
     gtk_widget_set_margin_end(vd->detail_empty, 16);
     gtk_widget_set_margin_top(vd->detail_empty, 24);
@@ -1129,8 +1129,10 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
 
     /* header */
     GtkWidget *detail_header = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
-    gtk_widget_set_margin_start(detail_header, 4);
-    gtk_widget_set_margin_bottom(detail_header, 12);
+    gtk_widget_set_margin_start(detail_header, 8);
+    gtk_widget_set_margin_end(detail_header, 8);
+    gtk_widget_set_margin_bottom(detail_header, 8);
+    gtk_widget_set_margin_top(detail_header, 4);
 
     vd->detail_name_label = gtk_label_new("");
     gtk_widget_add_css_class(vd->detail_name_label, "title-2");

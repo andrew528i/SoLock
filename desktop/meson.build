@@ -44,3 +44,7 @@ install_data('data/style.css',
 install_data('data/solock-desktop.desktop',
   install_dir: get_option('datadir') / 'applications',
 )
+
+install_data('data/icons/hicolor/scalable/apps/solock-desktop.svg',
+  install_dir: get_option('datadir') / 'icons' / 'hicolor' / 'scalable' / 'apps',
+)

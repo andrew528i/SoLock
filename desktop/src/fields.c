@@ -374,10 +374,10 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
     gboolean has_totp = json_object_get_boolean_member_with_default(obj, "has_totp", FALSE);
 
     GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-    gtk_widget_set_margin_start(box, 10);
-    gtk_widget_set_margin_end(box, 10);
-    gtk_widget_set_margin_top(box, 10);
-    gtk_widget_set_margin_bottom(box, 8);
+    gtk_widget_set_margin_start(box, 6);
+    gtk_widget_set_margin_end(box, 6);
+    gtk_widget_set_margin_top(box, 6);
+    gtk_widget_set_margin_bottom(box, 6);
     gtk_widget_set_size_request(box, 280, -1);
 
     DetailData *dd = g_new0(DetailData, 1);

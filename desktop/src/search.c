@@ -281,8 +281,8 @@ static void refresh_entries(SearchData *sd)
 
         GtkWidget *row_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
         gtk_widget_add_css_class(row_box, "entry-row");
-        gtk_widget_set_margin_start(row_box, 6);
-        gtk_widget_set_margin_end(row_box, 6);
+        gtk_widget_set_margin_start(row_box, 4);
+        gtk_widget_set_margin_end(row_box, 4);
         gtk_widget_set_margin_top(row_box, 4);
         gtk_widget_set_margin_bottom(row_box, 4);
         gtk_widget_set_size_request(row_box, -1, 48);

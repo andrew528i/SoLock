@@ -162,12 +162,12 @@ static GVariant *build_menu_layout(void)
     g_variant_builder_add(&children, "v",
         build_menu_item_variant(MENU_ID_STATUS, status_text, NULL, FALSE, TRUE));
 
+    g_variant_builder_add(&children, "v",
+        build_menu_item_variant(MENU_ID_MANAGE, "Manage Vault", NULL, !tray->locked, TRUE));
+
     const char *lock_label = tray->locked ? "Unlock" : "Lock";
     g_variant_builder_add(&children, "v",
         build_menu_item_variant(MENU_ID_LOCK, lock_label, NULL, TRUE, TRUE));
-
-    g_variant_builder_add(&children, "v",
-        build_menu_item_variant(MENU_ID_MANAGE, "Manage Vault", NULL, !tray->locked, TRUE));
 
     g_variant_builder_add(&children, "v",
         build_menu_item_variant(MENU_ID_SEP, NULL, "separator", TRUE, TRUE));

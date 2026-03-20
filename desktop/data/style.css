@@ -226,9 +226,7 @@ preferencesgroup > box > label {
     margin-bottom: 6px;
 }
 
-.sidebar-unified {
-    background-color: @window_bg_color;
-}
+/* sidebar spacer no longer needed - single list now */
 
 headerbar {
     min-height: 42px;

@@ -2,6 +2,7 @@
 Name=SoLock
 Comment=Decentralized Password Manager
 Exec=solock-desktop
+Icon=solock-desktop
 Type=Application
 Categories=Utility;Security;
 Keywords=password;manager;solana;
