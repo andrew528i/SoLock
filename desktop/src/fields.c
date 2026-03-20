@@ -398,6 +398,8 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
 
     GtkWidget *title_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
     gtk_widget_set_hexpand(title_box, TRUE);
+    if (!site_value || !*site_value)
+        gtk_widget_set_valign(title_box, GTK_ALIGN_CENTER);
 
     GtkWidget *title = gtk_label_new(name);
     gtk_widget_add_css_class(title, "detail-name");

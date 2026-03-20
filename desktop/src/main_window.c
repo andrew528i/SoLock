@@ -49,8 +49,10 @@ GtkWidget *solock_main_window_new(SolockApp *app)
     gtk_widget_set_vexpand(sidebar_box, TRUE);
 
     GtkWidget *sidebar_header = adw_header_bar_new();
+    adw_header_bar_set_show_title(ADW_HEADER_BAR(sidebar_header), TRUE);
     adw_header_bar_set_title_widget(ADW_HEADER_BAR(sidebar_header),
                                      GTK_WIDGET(adw_window_title_new("SoLock", "")));
+    gtk_widget_set_size_request(sidebar_header, -1, 47);
     gtk_box_append(GTK_BOX(sidebar_box), sidebar_header);
 
     GtkWidget *sidebar_list = gtk_list_box_new();
@@ -109,6 +111,7 @@ GtkWidget *solock_main_window_new(SolockApp *app)
     GtkWidget *content_header = adw_header_bar_new();
     GtkWidget *content_title = GTK_WIDGET(adw_window_title_new(section_titles[0], ""));
     adw_header_bar_set_title_widget(ADW_HEADER_BAR(content_header), content_title);
+    gtk_widget_set_size_request(content_header, -1, 47);
     gtk_box_append(GTK_BOX(content_box), content_header);
 
     GtkWidget *content_stack = gtk_stack_new();

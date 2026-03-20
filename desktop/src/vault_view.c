@@ -1078,9 +1078,10 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
 
     GtkWidget *stats_group = adw_preferences_group_new();
     adw_preferences_group_set_title(ADW_PREFERENCES_GROUP(stats_group), "Summary");
+    adw_preferences_group_set_description(ADW_PREFERENCES_GROUP(stats_group), " ");
     gtk_widget_set_margin_start(stats_group, 0);
     gtk_widget_set_margin_end(stats_group, 0);
-    gtk_widget_set_margin_top(stats_group, 16);
+    gtk_widget_set_margin_top(stats_group, 20);
     gtk_widget_set_margin_bottom(stats_group, 12);
 
     vd->stats_total = adw_action_row_new();

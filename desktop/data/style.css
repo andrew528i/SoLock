@@ -221,7 +221,8 @@ preferencesgroup > box > label {
     margin-bottom: 6px;
 }
 
-.sidebar-unified {
+.sidebar-unified,
+box.navigation-sidebar {
     background-color: @headerbar_bg_color;
 }
 

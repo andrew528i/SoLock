@@ -150,6 +150,7 @@ static gboolean on_key_pressed(GtkEventControllerKey *ctrl, guint keyval,
             GtkListBoxRow *first = gtk_list_box_get_row_at_index(GTK_LIST_BOX(sd->list_box), 0);
             if (first)
                 gtk_list_box_select_row(GTK_LIST_BOX(sd->list_box), first);
+            gtk_widget_grab_focus(sd->list_box);
             return TRUE;
         }
 
@@ -158,6 +159,7 @@ static gboolean on_key_pressed(GtkEventControllerKey *ctrl, guint keyval,
         GtkListBoxRow *next_row = gtk_list_box_get_row_at_index(GTK_LIST_BOX(sd->list_box), next);
         if (next_row)
             gtk_list_box_select_row(GTK_LIST_BOX(sd->list_box), next_row);
+        gtk_widget_grab_focus(sd->list_box);
         return TRUE;
     }
 
