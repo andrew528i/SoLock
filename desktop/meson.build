@@ -26,12 +26,18 @@ sources = files(
   'src/clipboard.c',
 )
 
+datadir = get_option('prefix') / get_option('datadir') / 'solock-desktop'
 add_project_arguments('-D_GNU_SOURCE', language: 'c')
+add_project_arguments('-DSOLOCK_DATA_DIR="' + datadir + '"', language: 'c')
 
 executable('solock-desktop',
   sources,
   dependencies: [gtk4, adw, layer_shell, json_glib],
   install: true,
+)
+
+install_data('data/style.css',
+  install_dir: datadir,
 )
 
 install_data('data/solock-desktop.desktop',

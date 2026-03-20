@@ -103,6 +103,15 @@ static const char *dbusmenu_introspection_xml =
     "      <arg name='id' type='i' direction='in'/>"
     "      <arg name='needUpdate' type='b' direction='out'/>"
     "    </method>"
+    "    <method name='EventGroup'>"
+    "      <arg name='events' type='a(isvu)' direction='in'/>"
+    "      <arg name='idErrors' type='ai' direction='out'/>"
+    "    </method>"
+    "    <method name='AboutToShowGroup'>"
+    "      <arg name='ids' type='ai' direction='in'/>"
+    "      <arg name='updatesNeeded' type='ai' direction='out'/>"
+    "      <arg name='idErrors' type='ai' direction='out'/>"
+    "    </method>"
     "    <signal name='ItemsPropertiesUpdated'>"
     "      <arg name='updatedProps' type='a(ia{sv})'/>"
     "      <arg name='removedProps' type='a(ias)'/>"
@@ -118,26 +127,26 @@ static const char *dbusmenu_introspection_xml =
     "  </interface>"
     "</node>";
 
-static void build_menu_item(GVariantBuilder *b, int id, const char *label,
-                             const char *type, gboolean enabled, gboolean visible)
+static GVariant *build_menu_item_variant(int id, const char *label,
+                                          const char *item_type,
+                                          gboolean enabled, gboolean visible)
 {
     GVariantBuilder props;
     g_variant_builder_init(&props, G_VARIANT_TYPE("a{sv}"));
 
     if (label)
         g_variant_builder_add(&props, "{sv}", "label", g_variant_new_string(label));
-    if (type)
-        g_variant_builder_add(&props, "{sv}", "type", g_variant_new_string(type));
-    if (!enabled)
-        g_variant_builder_add(&props, "{sv}", "enabled", g_variant_new_boolean(FALSE));
-    if (!visible)
-        g_variant_builder_add(&props, "{sv}", "visible", g_variant_new_boolean(FALSE));
 
-    GVariantBuilder children;
-    g_variant_builder_init(&children, G_VARIANT_TYPE("av"));
+    if (item_type)
+        g_variant_builder_add(&props, "{sv}", "type", g_variant_new_string(item_type));
 
-    g_variant_builder_add(b, "v",
-        g_variant_new("(ia{sv}av)", id, &props, &children));
+    g_variant_builder_add(&props, "{sv}", "enabled", g_variant_new_boolean(enabled));
+    g_variant_builder_add(&props, "{sv}", "visible", g_variant_new_boolean(visible));
+
+    GVariantBuilder empty_children;
+    g_variant_builder_init(&empty_children, G_VARIANT_TYPE("av"));
+
+    return g_variant_new("(ia{sv}av)", id, &props, &empty_children);
 }
 
 static GVariant *build_menu_layout(void)
@@ -151,18 +160,24 @@ static GVariant *build_menu_layout(void)
     g_variant_builder_init(&children, G_VARIANT_TYPE("av"));
 
     const char *status_text = tray->locked ? "Locked" : "Unlocked";
-    build_menu_item(&children, MENU_ID_STATUS, status_text, NULL, FALSE, TRUE);
-    build_menu_item(&children, MENU_ID_SEP1, NULL, "separator", TRUE, TRUE);
+    g_variant_builder_add(&children, "v",
+        build_menu_item_variant(MENU_ID_STATUS, status_text, NULL, FALSE, TRUE));
 
-    if (tray->locked) {
-        build_menu_item(&children, MENU_ID_LOCK, "Unlock", NULL, TRUE, TRUE);
-    } else {
-        build_menu_item(&children, MENU_ID_LOCK, "Lock", NULL, TRUE, TRUE);
-    }
+    g_variant_builder_add(&children, "v",
+        build_menu_item_variant(MENU_ID_SEP1, NULL, "separator", TRUE, TRUE));
 
-    build_menu_item(&children, MENU_ID_MANAGE, "Manage Vault", NULL, TRUE, TRUE);
-    build_menu_item(&children, MENU_ID_SEP2, NULL, "separator", TRUE, TRUE);
-    build_menu_item(&children, MENU_ID_QUIT, "Quit", NULL, TRUE, TRUE);
+    const char *lock_label = tray->locked ? "Unlock" : "Lock";
+    g_variant_builder_add(&children, "v",
+        build_menu_item_variant(MENU_ID_LOCK, lock_label, NULL, TRUE, TRUE));
+
+    g_variant_builder_add(&children, "v",
+        build_menu_item_variant(MENU_ID_MANAGE, "Manage Vault", NULL, TRUE, TRUE));
+
+    g_variant_builder_add(&children, "v",
+        build_menu_item_variant(MENU_ID_SEP2, NULL, "separator", TRUE, TRUE));
+
+    g_variant_builder_add(&children, "v",
+        build_menu_item_variant(MENU_ID_QUIT, "Quit", NULL, TRUE, TRUE));
 
     return g_variant_new("(ia{sv}av)", MENU_ID_ROOT, &root_props, &children);
 }
@@ -194,10 +209,12 @@ static void sni_method_call(GDBusConnection *conn, const char *sender,
 {
     (void)conn; (void)sender; (void)path; (void)iface; (void)params; (void)data;
 
-    if (g_strcmp0(method, "Activate") == 0 ||
-        g_strcmp0(method, "ContextMenu") == 0 ||
-        g_strcmp0(method, "SecondaryActivate") == 0 ||
-        g_strcmp0(method, "Scroll") == 0) {
+    if (g_strcmp0(method, "Activate") == 0) {
+        solock_popup_toggle(solock_app_get_popup(tray->app));
+        g_dbus_method_invocation_return_value(invocation, NULL);
+    } else if (g_strcmp0(method, "ContextMenu") == 0 ||
+               g_strcmp0(method, "SecondaryActivate") == 0 ||
+               g_strcmp0(method, "Scroll") == 0) {
         g_dbus_method_invocation_return_value(invocation, NULL);
     } else {
         g_dbus_method_invocation_return_dbus_error(invocation,
@@ -227,7 +244,7 @@ static GVariant *sni_get_property(GDBusConnection *conn, const char *sender,
     if (g_strcmp0(property, "Menu") == 0)
         return g_variant_new_object_path(DBUSMENU_PATH);
     if (g_strcmp0(property, "ItemIsMenu") == 0)
-        return g_variant_new_boolean(TRUE);
+        return g_variant_new_boolean(FALSE);
     if (g_strcmp0(property, "ToolTip") == 0) {
         const char *tooltip = tray->locked ? "SoLock - Locked" : "SoLock - Unlocked";
         GVariantBuilder pixmaps;
@@ -253,7 +270,7 @@ static void menu_method_call(GDBusConnection *conn, const char *sender,
         const char *event_id;
         GVariant *event_data;
         guint32 timestamp;
-        g_variant_get(params, "(isvu)", &id, &event_id, &event_data, &timestamp);
+        g_variant_get(params, "(is@vu)", &id, &event_id, &event_data, &timestamp);
 
         if (g_strcmp0(event_id, "clicked") == 0) {
             handle_menu_event(id);
@@ -261,9 +278,39 @@ static void menu_method_call(GDBusConnection *conn, const char *sender,
 
         g_variant_unref(event_data);
         g_dbus_method_invocation_return_value(invocation, NULL);
+    } else if (g_strcmp0(method, "EventGroup") == 0) {
+        GVariantIter *iter;
+        g_variant_get(params, "(a(isvu))", &iter);
+
+        gint32 id;
+        const char *event_id;
+        GVariant *event_data;
+        guint32 timestamp;
+
+        while (g_variant_iter_next(iter, "(is@vu)", &id, &event_id, &event_data, &timestamp)) {
+            if (g_strcmp0(event_id, "clicked") == 0) {
+                handle_menu_event(id);
+            }
+            g_variant_unref(event_data);
+        }
+        g_variant_iter_free(iter);
+
+        GVariantBuilder errors;
+        g_variant_builder_init(&errors, G_VARIANT_TYPE("ai"));
+        g_dbus_method_invocation_return_value(invocation,
+            g_variant_new("(ai)", &errors));
     } else if (g_strcmp0(method, "AboutToShow") == 0) {
         g_dbus_method_invocation_return_value(invocation,
-            g_variant_new("(b)", FALSE));
+            g_variant_new("(b)", TRUE));
+    } else if (g_strcmp0(method, "AboutToShowGroup") == 0) {
+        GVariantBuilder updates;
+        g_variant_builder_init(&updates, G_VARIANT_TYPE("ai"));
+
+        GVariantBuilder errors;
+        g_variant_builder_init(&errors, G_VARIANT_TYPE("ai"));
+
+        g_dbus_method_invocation_return_value(invocation,
+            g_variant_new("(aiai)", &updates, &errors));
     } else if (g_strcmp0(method, "GetGroupProperties") == 0) {
         GVariantBuilder b;
         g_variant_builder_init(&b, G_VARIANT_TYPE("a(ia{sv})"));

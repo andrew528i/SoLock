@@ -70,6 +70,24 @@ static void solock_app_startup(GApplication *gapp)
     AdwStyleManager *style = adw_style_manager_get_default();
     adw_style_manager_set_color_scheme(style, ADW_COLOR_SCHEME_PREFER_DARK);
 
+    GtkCssProvider *css = gtk_css_provider_new();
+    const char *css_paths[] = {
+        "data/style.css",
+        SOLOCK_DATA_DIR "/style.css",
+        NULL
+    };
+    for (const char **p = css_paths; *p; p++) {
+        if (g_file_test(*p, G_FILE_TEST_EXISTS)) {
+            gtk_css_provider_load_from_path(css, *p);
+            break;
+        }
+    }
+    gtk_style_context_add_provider_for_display(
+        gdk_display_get_default(),
+        GTK_STYLE_PROVIDER(css),
+        GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+    g_object_unref(css);
+
     app->config = solock_config_new();
     solock_config_load(app->config);
 

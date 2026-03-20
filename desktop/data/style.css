@@ -1,30 +1,147 @@
 .popup-window {
-    background-color: alpha(@window_bg_color, 0.95);
-    border-radius: 12px;
-    border: 1px solid alpha(@borders, 0.3);
+    background-color: alpha(@window_bg_color, 0.92);
+    border-radius: 16px;
+    border: 1px solid alpha(@borders, 0.15);
+}
+
+.search-input {
+    background: alpha(@view_bg_color, 0.5);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 14px;
+    border: 1px solid alpha(@borders, 0.1);
+}
+
+.search-input:focus {
+    background: alpha(@view_bg_color, 0.7);
+    border-color: alpha(@accent_color, 0.4);
+}
+
+.entry-list {
+    background: transparent;
+}
+
+.entry-list row {
+    border-radius: 10px;
+    margin: 2px 8px;
+    transition: background-color 150ms ease;
+}
+
+.entry-list row:hover {
+    background-color: alpha(@accent_color, 0.08);
+}
+
+.entry-list row:selected {
+    background-color: alpha(@accent_color, 0.15);
+}
+
+.entry-row {
+    min-height: 24px;
+}
+
+.entry-name {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.entry-subtitle {
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+.entry-icon {
+    opacity: 0.6;
+}
+
+.totp-dot {
+    background-color: @accent_color;
+    border-radius: 4px;
+    min-width: 8px;
+    min-height: 8px;
 }
 
 .label-hint {
-    font-weight: bold;
+    font-weight: 700;
+    font-size: 12px;
     color: @accent_color;
+    background: alpha(@accent_color, 0.12);
+    border-radius: 4px;
+    min-width: 20px;
+    min-height: 20px;
+    padding: 0 4px;
+}
+
+.detail-type {
+    font-size: 12px;
+}
+
+.detail-field-row {
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin: 2px 0;
+    transition: background-color 150ms ease;
+}
+
+.detail-field-row:hover {
+    background-color: alpha(@view_bg_color, 0.5);
+}
+
+.detail-field-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.detail-field-value {
     font-size: 14px;
-    min-width: 24px;
+    margin-top: 2px;
 }
 
-.monospace {
+.totp-section {
+    background: alpha(@accent_color, 0.06);
+    border-radius: 12px;
+    padding: 12px 16px;
+    transition: background-color 150ms ease;
+}
+
+.totp-section:hover {
+    background: alpha(@accent_color, 0.1);
+}
+
+.totp-code {
     font-family: monospace;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 4px;
 }
 
-.entry-row:hover {
-    background-color: alpha(@accent_color, 0.1);
+.totp-progress trough {
+    min-height: 3px;
+    border-radius: 2px;
+    background: alpha(@borders, 0.15);
+}
+
+.totp-progress trough block.filled {
+    background-color: @accent_color;
+    border-radius: 2px;
+}
+
+.totp-progress trough block.empty {
+    background-color: transparent;
+}
+
+.copied-feedback {
+    color: @accent_color;
+    font-weight: 600;
+    transition: color 150ms ease;
 }
 
 levelbar trough block.filled {
     background-color: @accent_color;
-    border-radius: 3px;
+    border-radius: 2px;
 }
 
 levelbar trough block.empty {
-    background-color: alpha(@borders, 0.2);
-    border-radius: 3px;
+    background-color: alpha(@borders, 0.15);
+    border-radius: 2px;
 }
