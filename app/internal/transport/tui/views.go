@@ -257,7 +257,7 @@ func (a *App) viewEntryDetail() string {
 	}
 
 	if secret := entry.TOTPSecret(); secret != "" {
-		code, remaining, err := generateTOTP(secret, 6, 30)
+		code, remaining, err := a.generateTOTP(secret, 6, 30)
 		lines = append(lines, "")
 		if err == nil {
 			lines = append(lines, fmt.Sprintf("  %-14s %s  %s",

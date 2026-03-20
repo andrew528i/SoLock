@@ -5,6 +5,7 @@ go 1.24.2
 tool go.uber.org/mock/mockgen
 
 require (
+	github.com/Masterminds/squirrel v1.5.4
 	github.com/atotto/clipboard v0.1.4
 	github.com/charmbracelet/bubbles v1.0.0
 	github.com/charmbracelet/bubbletea v1.3.10
@@ -18,7 +19,6 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.0.0-rc.1 // indirect
-	github.com/Masterminds/squirrel v1.5.4 // indirect
 	github.com/andres-erbsen/clock v0.0.0-20160526145045-9e14626cd129 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/blendle/zapdriver v1.3.1 // indirect

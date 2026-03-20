@@ -2,7 +2,6 @@ package tui
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -15,7 +14,6 @@ import (
 
 	"github.com/solock/solock/internal/application"
 	"github.com/solock/solock/internal/domain"
-	"github.com/solock/solock/internal/repository/adapter"
 	"github.com/solock/solock/internal/usecase"
 )
 
@@ -380,17 +378,15 @@ func (a *App) updateUnlock(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (a *App) afterUnlock() tea.Cmd {
 	a.passwordInput.SetValue("")
-	a.passGenConfig = domain.DefaultPasswordGenConfig()
 
 	ctx := context.Background()
-	if cfg := a.app.Config(); cfg != nil {
-		a.loadPassGenConfig(ctx, cfg)
-		if savedNet, _ := cfg.Get(ctx, "network"); savedNet != "" {
-			a.network = savedNet
-		}
-		if savedRPC, _ := cfg.Get(ctx, "rpc_url"); savedRPC != "" {
-			a.rpcURL = savedRPC
-		}
+	a.passGenConfig = a.app.GetPassGenConfig.Execute(ctx)
+
+	if savedNet, _ := a.app.GetConfig.Execute(ctx, "network"); savedNet != "" {
+		a.network = savedNet
+	}
+	if savedRPC, _ := a.app.GetConfig.Execute(ctx, "rpc_url"); savedRPC != "" {
+		a.rpcURL = savedRPC
 	}
 	if ss := a.app.SyncState(); ss != nil {
 		if state, err := ss.Get(ctx); err == nil && !state.LastSyncAt.IsZero() {
@@ -421,7 +417,7 @@ func (a *App) updateDashboard(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.entryCursor = 0
 			return a, nil
 		case "s":
-			if a.app.Vault() == nil || !a.vaultExists {
+			if !a.vaultExists {
 				a.addLog("Vault not ready")
 				return a, nil
 			}
@@ -494,11 +490,11 @@ func (a *App) updateDashboard(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "x":
 			a.confirmMsg = "Clear local database?"
 			a.prev = screenDashboard
+			clearUC := a.app.ClearLocalData
 			a.confirmAction = func() tea.Cmd {
-				entries := a.app.Entries()
 				return func() tea.Msg {
-					if entries != nil {
-						entries.ClearAll(context.Background())
+					if clearUC != nil {
+						clearUC.Execute(context.Background())
 					}
 					return entriesLoadedMsg{entries: nil}
 				}
@@ -512,8 +508,6 @@ func (a *App) updateDashboard(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	return a, nil
 }
-
-// visibleEntries moved to vault_helpers.go
 
 func (a *App) updateVault(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if a.searching {
@@ -700,7 +694,7 @@ func (a *App) updateEntryForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			if a.isOnGenerableField() {
 				idx := a.entryFormCursor - 1
-				a.entryFormFields[idx].Input.SetValue(generatePasswordWithConfig(a.passGenConfig))
+				a.entryFormFields[idx].Input.SetValue(a.generatePassword())
 				a.addLog("Password generated")
 				return a, nil
 			}
@@ -778,7 +772,7 @@ func (a *App) updatePassGenPanel(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "g":
 			idx := a.entryFormCursor - 1
 			if idx >= 0 && idx < len(a.entryFormFields) {
-				a.entryFormFields[idx].Input.SetValue(generatePasswordWithConfig(a.passGenConfig))
+				a.entryFormFields[idx].Input.SetValue(a.generatePassword())
 				a.addLog("Password generated")
 			}
 			a.passGenOpen = false
@@ -800,21 +794,11 @@ func (a *App) togglePassGenOption() {
 	}
 }
 
-func (a *App) loadPassGenConfig(ctx context.Context, cfg domain.ConfigRepository) {
-	if raw, _ := cfg.Get(ctx, "passgen_config"); raw != "" {
-		var c domain.PasswordGenConfig
-		if err := json.Unmarshal([]byte(raw), &c); err == nil {
-			a.passGenConfig = &c
-		}
-	}
-}
-
 func (a *App) savePassGenConfig() {
-	if a.passGenConfig == nil || a.app.Config() == nil {
+	if a.passGenConfig == nil || a.app.SavePassGenConfig == nil {
 		return
 	}
-	data, _ := json.Marshal(a.passGenConfig)
-	a.app.Config().Set(context.Background(), "passgen_config", string(data))
+	a.app.SavePassGenConfig.Execute(context.Background(), a.passGenConfig)
 }
 
 func (a *App) updateSync(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -881,53 +865,53 @@ func (a *App) addLog(text string) {
 }
 
 func (a *App) checkBalance() tea.Cmd {
-	vault := a.app.Vault()
+	uc := a.app.CheckBalance
 	return func() tea.Msg {
-		if vault == nil {
+		if uc == nil {
 			return balanceMsg{}
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		bal, err := vault.GetBalance(ctx)
+		bal, err := uc.Execute(ctx)
 		return balanceMsg{balance: bal, err: err}
 	}
 }
 
 func (a *App) checkDeployStatus() tea.Cmd {
-	vault := a.app.Vault()
+	uc := a.app.CheckDeployStatus
 	return func() tea.Msg {
-		if vault == nil {
+		if uc == nil {
 			return deployStatusMsg{}
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		deployed, err := vault.IsProgramDeployed(ctx)
+		deployed, err := uc.Execute(ctx)
 		return deployStatusMsg{deployed: deployed, err: err}
 	}
 }
 
 func (a *App) checkVaultStatus() tea.Cmd {
-	vault := a.app.Vault()
+	uc := a.app.CheckVaultStatus
 	return func() tea.Msg {
-		if vault == nil {
+		if uc == nil {
 			return vaultStatusMsg{}
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		exists, err := vault.Exists(ctx)
+		exists, err := uc.Execute(ctx)
 		return vaultStatusMsg{exists: exists, err: err}
 	}
 }
 
 func (a *App) loadEntries() tea.Cmd {
-	entries := a.app.Entries()
+	uc := a.app.ListEntries
 	return func() tea.Msg {
-		if entries == nil {
+		if uc == nil {
 			return entriesLoadedMsg{}
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		list, err := entries.List(ctx)
+		list, err := uc.Execute(ctx)
 		return entriesLoadedMsg{entries: list, err: err}
 	}
 }
@@ -953,43 +937,38 @@ func (a *App) startSync() tea.Cmd {
 }
 
 func (a *App) deployProgram() tea.Cmd {
-	vault := a.app.Vault()
-	keys := a.app.Keys()
+	uc := a.app.DeployProgram
 	return func() tea.Msg {
-		if vault == nil || keys == nil {
+		if uc == nil {
 			return deployResultMsg{err: fmt.Errorf("not connected")}
-		}
-		binary, err := adapter.PatchedProgramBinary(keys.ProgramID)
-		if err != nil {
-			return deployResultMsg{err: fmt.Errorf("patch program: %w", err)}
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
-		return deployResultMsg{err: vault.DeployProgram(ctx, binary)}
+		return deployResultMsg{err: uc.Execute(ctx)}
 	}
 }
 
 func (a *App) initVault() tea.Cmd {
-	vault := a.app.Vault()
+	uc := a.app.InitVault
 	return func() tea.Msg {
-		if vault == nil {
+		if uc == nil {
 			return initVaultMsg{err: fmt.Errorf("not connected")}
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		return initVaultMsg{err: vault.Initialize(ctx)}
+		return initVaultMsg{err: uc.Execute(ctx)}
 	}
 }
 
 func (a *App) resetVault() tea.Cmd {
-	vault := a.app.Vault()
+	uc := a.app.ResetVault
 	return func() tea.Msg {
-		if vault == nil {
+		if uc == nil {
 			return initVaultMsg{err: fmt.Errorf("not connected")}
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		return initVaultMsg{err: vault.Reset(ctx)}
+		return initVaultMsg{err: uc.Execute(ctx)}
 	}
 }
 
@@ -1145,10 +1124,10 @@ func (a *App) deleteEntry(entry *domain.Entry) tea.Cmd {
 }
 
 func (a *App) saveConfig() {
-	if a.app.Config() != nil {
-		ctx := context.Background()
-		a.app.Config().Set(ctx, "network", a.network)
-		a.app.Config().Set(ctx, "rpc_url", a.rpcURL)
+	ctx := context.Background()
+	if a.app.SetConfig != nil {
+		a.app.SetConfig.Execute(ctx, "network", a.network)
+		a.app.SetConfig.Execute(ctx, "rpc_url", a.rpcURL)
 	}
 	a.addLog("Config saved")
 }
@@ -1178,7 +1157,7 @@ func (a *App) copyTOTPCode() {
 		a.addLog("No TOTP secret")
 		return
 	}
-	code, _, err := generateTOTP(secret, 6, 30)
+	code, _, err := a.generateTOTP(secret, 6, 30)
 	if err != nil {
 		a.addLog("TOTP failed: " + err.Error())
 		return

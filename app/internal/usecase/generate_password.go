@@ -1,4 +1,4 @@
-package tui
+package usecase
 
 import (
 	"crypto/rand"
@@ -14,7 +14,13 @@ const (
 	charsSpecial = "!@#$%^&*()-_=+[]{}|;:,.<>?"
 )
 
-func generatePasswordWithConfig(cfg *domain.PasswordGenConfig) string {
+type GeneratePasswordUseCase struct{}
+
+func NewGeneratePasswordUseCase() *GeneratePasswordUseCase {
+	return &GeneratePasswordUseCase{}
+}
+
+func (uc *GeneratePasswordUseCase) Execute(cfg *domain.PasswordGenConfig) string {
 	if cfg == nil {
 		cfg = domain.DefaultPasswordGenConfig()
 	}

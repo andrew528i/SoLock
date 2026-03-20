@@ -1,4 +1,4 @@
-package tui
+package usecase
 
 import (
 	"time"
@@ -7,7 +7,18 @@ import (
 	"github.com/pquerna/otp/totp"
 )
 
-func generateTOTP(secret string, digits int, period int) (string, int, error) {
+type TOTPResult struct {
+	Code      string
+	Remaining int
+}
+
+type GenerateTOTPUseCase struct{}
+
+func NewGenerateTOTPUseCase() *GenerateTOTPUseCase {
+	return &GenerateTOTPUseCase{}
+}
+
+func (uc *GenerateTOTPUseCase) Execute(secret string, digits int, period int) (*TOTPResult, error) {
 	if digits == 0 {
 		digits = 6
 	}
@@ -25,10 +36,9 @@ func generateTOTP(secret string, digits int, period int) (string, int, error) {
 		Period: uint(period),
 	})
 	if err != nil {
-		return "", 0, err
+		return nil, err
 	}
 
 	remaining := period - int(time.Now().Unix()%int64(period))
-	return code, remaining, nil
+	return &TOTPResult{Code: code, Remaining: remaining}, nil
 }
-

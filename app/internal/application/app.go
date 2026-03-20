@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"sync"
+	"time"
 
 	"github.com/solock/solock/internal/domain"
 	"github.com/solock/solock/internal/domain/service"
@@ -19,18 +21,37 @@ type App struct {
 	vaultRepoFactory VaultRepoFactory
 	storageFactory   StorageFactory
 
+	mu        sync.RWMutex
 	keys      *domain.DerivedKeys
 	crypto    domain.CryptoService
 	entries   domain.EntryRepository
 	config    domain.ConfigRepository
 	syncState domain.SyncStateRepository
 	vault     domain.VaultRepository
+	expiresAt time.Time
 
-	Unlock      *usecase.UnlockUseCase
-	AddEntry    *usecase.AddEntryUseCase
-	UpdateEntry *usecase.UpdateEntryUseCase
-	DeleteEntry *usecase.DeleteEntryUseCase
-	Sync        *usecase.SyncUseCase
+	Unlock             *usecase.UnlockUseCase
+	AddEntry           *usecase.AddEntryUseCase
+	UpdateEntry        *usecase.UpdateEntryUseCase
+	DeleteEntry        *usecase.DeleteEntryUseCase
+	Sync               *usecase.SyncUseCase
+	ListEntries        *usecase.ListEntriesUseCase
+	SearchEntries      *usecase.SearchEntriesUseCase
+	GetEntry           *usecase.GetEntryUseCase
+	GetDashboard       *usecase.GetDashboardUseCase
+	DeployProgram      *usecase.DeployProgramUseCase
+	InitVault          *usecase.InitVaultUseCase
+	ResetVault         *usecase.ResetVaultUseCase
+	CheckBalance       *usecase.CheckBalanceUseCase
+	CheckDeployStatus  *usecase.CheckDeployStatusUseCase
+	CheckVaultStatus   *usecase.CheckVaultStatusUseCase
+	ClearLocalData     *usecase.ClearLocalDataUseCase
+	GeneratePassword   *usecase.GeneratePasswordUseCase
+	GenerateTOTP       *usecase.GenerateTOTPUseCase
+	GetConfig          *usecase.GetConfigUseCase
+	SetConfig          *usecase.SetConfigUseCase
+	GetPassGenConfig   *usecase.GetPassGenConfigUseCase
+	SavePassGenConfig  *usecase.SavePassGenConfigUseCase
 }
 
 func New(dataDir string, vaultFactory VaultRepoFactory, storageFactory StorageFactory) *App {
@@ -41,16 +62,29 @@ func New(dataDir string, vaultFactory VaultRepoFactory, storageFactory StorageFa
 		vaultRepoFactory: vaultFactory,
 		storageFactory:   storageFactory,
 		Unlock:           usecase.NewUnlockUseCase(kd),
+		GeneratePassword: usecase.NewGeneratePasswordUseCase(),
+		GenerateTOTP:     usecase.NewGenerateTOTPUseCase(),
 	}
 }
 
 func (a *App) OnUnlock(ctx context.Context, password, rpcURL string) error {
+	return a.OnUnlockWithTimeout(ctx, password, rpcURL, 0)
+}
+
+func (a *App) OnUnlockWithTimeout(ctx context.Context, password, rpcURL string, timeoutMinutes int) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
 	result, err := a.Unlock.Execute(ctx, password)
 	if err != nil {
 		return fmt.Errorf("derive keys: %w", err)
 	}
 	a.keys = result.Keys
 	a.crypto = result.Crypto
+
+	if timeoutMinutes > 0 {
+		a.expiresAt = time.Now().Add(time.Duration(timeoutMinutes) * time.Minute)
+	}
 
 	dbPath := filepath.Join(a.dataDir, "vault.db")
 	entries, config, syncState, err := a.storageFactory(dbPath, a.crypto)
@@ -71,8 +105,55 @@ func (a *App) OnUnlock(ctx context.Context, password, rpcURL string) error {
 	a.UpdateEntry = usecase.NewUpdateEntryUseCase(a.entries, a.vault, a.crypto)
 	a.DeleteEntry = usecase.NewDeleteEntryUseCase(a.entries, a.vault)
 	a.Sync = usecase.NewSyncUseCase(a.entries, a.vault, a.syncState, a.crypto)
+	a.ListEntries = usecase.NewListEntriesUseCase(a.entries)
+	a.SearchEntries = usecase.NewSearchEntriesUseCase(a.entries)
+	a.GetEntry = usecase.NewGetEntryUseCase(a.entries)
+	a.GetDashboard = usecase.NewGetDashboardUseCase(a.vault, a.entries, a.config, a.syncState, a.keys)
+	a.DeployProgram = usecase.NewDeployProgramUseCase(a.vault, a.keys)
+	a.InitVault = usecase.NewInitVaultUseCase(a.vault)
+	a.ResetVault = usecase.NewResetVaultUseCase(a.vault)
+	a.CheckBalance = usecase.NewCheckBalanceUseCase(a.vault)
+	a.CheckDeployStatus = usecase.NewCheckDeployStatusUseCase(a.vault)
+	a.CheckVaultStatus = usecase.NewCheckVaultStatusUseCase(a.vault)
+	a.ClearLocalData = usecase.NewClearLocalDataUseCase(a.entries)
+	a.GetConfig = usecase.NewGetConfigUseCase(a.config)
+	a.SetConfig = usecase.NewSetConfigUseCase(a.config)
+	a.GetPassGenConfig = usecase.NewGetPassGenConfigUseCase(a.config)
+	a.SavePassGenConfig = usecase.NewSavePassGenConfigUseCase(a.config)
 
 	return nil
+}
+
+func (a *App) Lock() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	if a.keys != nil {
+		a.keys.Zero()
+		a.keys = nil
+	}
+	a.expiresAt = time.Time{}
+}
+
+func (a *App) IsLocked() bool {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.keys == nil
+}
+
+func (a *App) IsExpired() bool {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	if a.expiresAt.IsZero() {
+		return false
+	}
+	return time.Now().After(a.expiresAt)
+}
+
+func (a *App) ExpiresAt() time.Time {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.expiresAt
 }
 
 func (a *App) Keys() *domain.DerivedKeys            { return a.keys }
@@ -83,8 +164,5 @@ func (a *App) Vault() domain.VaultRepository         { return a.vault }
 func (a *App) Crypto() domain.CryptoService          { return a.crypto }
 
 func (a *App) Shutdown() {
-	if a.keys != nil {
-		a.keys.Zero()
-		a.keys = nil
-	}
+	a.Lock()
 }
