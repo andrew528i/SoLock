@@ -255,10 +255,10 @@ static void refresh_entries(SearchData *sd)
 
         GtkWidget *row_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
         gtk_widget_add_css_class(row_box, "entry-row");
-        gtk_widget_set_margin_start(row_box, 10);
-        gtk_widget_set_margin_end(row_box, 10);
-        gtk_widget_set_margin_top(row_box, 6);
-        gtk_widget_set_margin_bottom(row_box, 6);
+        gtk_widget_set_margin_start(row_box, 6);
+        gtk_widget_set_margin_end(row_box, 6);
+        gtk_widget_set_margin_top(row_box, 4);
+        gtk_widget_set_margin_bottom(row_box, 4);
 
         char lbl_char = label_char_for_index(i);
         GtkWidget *hint_revealer = gtk_revealer_new();
@@ -337,10 +337,10 @@ GtkWidget *solock_search_view_new(SolockApp *app)
 
     GtkWidget *search_entry = gtk_search_entry_new();
     gtk_widget_add_css_class(search_entry, "search-input");
-    gtk_widget_set_margin_start(search_entry, 10);
-    gtk_widget_set_margin_end(search_entry, 10);
-    gtk_widget_set_margin_top(search_entry, 8);
-    gtk_widget_set_margin_bottom(search_entry, 4);
+    gtk_widget_set_margin_start(search_entry, 6);
+    gtk_widget_set_margin_end(search_entry, 6);
+    gtk_widget_set_margin_top(search_entry, 6);
+    gtk_widget_set_margin_bottom(search_entry, 2);
     gtk_revealer_set_child(GTK_REVEALER(search_revealer), search_entry);
     gtk_box_append(GTK_BOX(box), search_revealer);
 

@@ -141,10 +141,19 @@ SolockClient *solock_app_get_client(SolockApp *app) { return app->client; }
 SolockConfig *solock_app_get_config(SolockApp *app) { return app->config; }
 GtkWidget    *solock_app_get_popup(SolockApp *app)  { return app->popup; }
 
+static void on_main_window_destroy(GtkWidget *widget, gpointer data)
+{
+    (void)widget;
+    SolockApp *app = data;
+    app->main_window = NULL;
+}
+
 void solock_app_show_main_window(SolockApp *app)
 {
     if (app->main_window == NULL) {
         app->main_window = solock_main_window_new(app);
+        g_signal_connect(app->main_window, "destroy",
+                         G_CALLBACK(on_main_window_destroy), app);
     }
     gtk_window_present(GTK_WINDOW(app->main_window));
 }

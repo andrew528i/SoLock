@@ -36,7 +36,7 @@ static void on_unlock_activate(GtkEntry *widget, gpointer data)
     if (ok) {
         solock_tray_update_status(ud->app, FALSE);
         GtkWidget *popup = solock_app_get_popup(ud->app);
-        solock_popup_switch_to_search(popup);
+        solock_popup_hide(popup);
     } else {
         gtk_label_set_text(GTK_LABEL(ud->error_label), error->message);
         g_error_free(error);

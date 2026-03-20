@@ -61,6 +61,25 @@ static const char *type_display_name(const char *type)
     return type;
 }
 
+typedef struct {
+    char *value;
+    int clear_seconds;
+    gboolean use_wtype;
+} PasteJob;
+
+static gboolean do_paste_delayed(gpointer data)
+{
+    PasteJob *job = data;
+    if (job->use_wtype && solock_wtype_available()) {
+        solock_wtype_type(job->value, NULL);
+    } else {
+        solock_clipboard_copy(job->value, job->clear_seconds, NULL);
+    }
+    g_free(job->value);
+    g_free(job);
+    return G_SOURCE_REMOVE;
+}
+
 static void do_paste_value(SolockApp *app, const char *value)
 {
     SolockConfig *config = solock_app_get_config(app);
@@ -69,12 +88,12 @@ static void do_paste_value(SolockApp *app, const char *value)
     GtkWidget *popup = solock_app_get_popup(app);
     solock_popup_hide(popup);
 
-    if (g_strcmp0(method, "wtype") == 0 && solock_wtype_available()) {
-        solock_wtype_type(value, NULL);
-    } else {
-        int clear = solock_config_get_clipboard_clear_seconds(config);
-        solock_clipboard_copy(value, clear, NULL);
-    }
+    PasteJob *job = g_new0(PasteJob, 1);
+    job->value = g_strdup(value);
+    job->clear_seconds = solock_config_get_clipboard_clear_seconds(config);
+    job->use_wtype = g_strcmp0(method, "wtype") == 0;
+
+    g_timeout_add(150, do_paste_delayed, job);
 }
 
 typedef struct {
@@ -152,9 +171,11 @@ static void on_totp_clicked(GtkGestureClick *gesture, int n_press, double x, dou
     (void)gesture; (void)n_press; (void)x; (void)y;
     TotpClickData *tcd = data;
 
-    SolockConfig *config = solock_app_get_config(tcd->app);
-    int clear = solock_config_get_clipboard_clear_seconds(config);
-    solock_clipboard_copy(tcd->code, clear, NULL);
+    if (tcd->code && *tcd->code) {
+        SolockConfig *config = solock_app_get_config(tcd->app);
+        int clear = solock_config_get_clipboard_clear_seconds(config);
+        solock_clipboard_copy(tcd->code, clear, NULL);
+    }
 
     GtkWidget *popup = solock_app_get_popup(tcd->app);
     solock_popup_hide(popup);
@@ -373,10 +394,6 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
     dd->fields = g_new0(FieldInfo, field_count);
     dd->field_count = field_count;
 
-    GtkWidget *fields_scroll = gtk_scrolled_window_new();
-    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(fields_scroll), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
-    gtk_widget_set_vexpand(fields_scroll, TRUE);
-
     GtkWidget *fields_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 
     int idx = 0;
@@ -442,8 +459,7 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
     }
     g_list_free(members);
 
-    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(fields_scroll), fields_box);
-    gtk_box_append(GTK_BOX(box), fields_scroll);
+    gtk_box_append(GTK_BOX(box), fields_box);
 
     if (has_totp && dd->totp_code_label) {
         update_totp(dd);
@@ -455,10 +471,10 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
     g_signal_connect(key_ctrl, "key-pressed", G_CALLBACK(on_key_pressed), dd);
     g_signal_connect(key_ctrl, "key-released", G_CALLBACK(on_key_released), dd);
     gtk_widget_add_controller(box, key_ctrl);
+    gtk_widget_set_focusable(box, TRUE);
 
     g_signal_connect(box, "destroy", G_CALLBACK(on_detail_destroy), dd);
-
-    return box;
+    g_signal_connect_swapped(box, "map", G_CALLBACK(gtk_widget_grab_focus), box);
 }
 
 static void update_label_hints(DetailData *dd)
