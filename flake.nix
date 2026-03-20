@@ -31,6 +31,26 @@
           subPackages = [ "cmd/solock" ];
         };
 
+        packages.desktop = pkgs.stdenv.mkDerivation {
+          pname = "solock-desktop";
+          version = "0.1.0";
+          src = ./desktop;
+
+          nativeBuildInputs = with pkgs; [
+            meson
+            ninja
+            pkg-config
+            wrapGAppsHook4
+          ];
+
+          buildInputs = with pkgs; [
+            gtk4
+            libadwaita
+            gtk4-layer-shell
+            json-glib
+          ];
+        };
+
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
             go
@@ -59,6 +79,15 @@
             libudev-zero
             gcc
             binutils
+
+            gtk4
+            libadwaita
+            gtk4-layer-shell
+            json-glib
+            meson
+            ninja
+            wtype
+            wl-clipboard
           ];
 
           shellHook = ''
@@ -123,10 +152,10 @@
             echo "  anchor:  $(anchor --version 2>/dev/null || echo 'not installed')"
             echo ""
             echo "Commands:"
-            echo "  make build        - Build SoLock TUI"
-            echo "  make test         - Run tests"
-            echo "  make anchor-build - Build Solana program"
-            echo "  make run          - Run SoLock"
+            echo "  make build          - Build SoLock TUI"
+            echo "  make build-desktop  - Build SoLock Desktop"
+            echo "  make test           - Run tests"
+            echo "  make run            - Run SoLock"
             echo ""
           '';
 

@@ -1,7 +1,10 @@
-.PHONY: build run test test-go test-program clean generate program-build program-docker-build
+.PHONY: build build-desktop run test test-go test-program clean generate program-build program-docker-build
 
 build:
 	cd app && go build -o ../solock ./cmd/solock/
+
+build-desktop:
+	cd desktop && meson setup builddir --wipe 2>/dev/null; cd desktop && meson compile -C builddir
 
 run: build
 	./solock
@@ -26,3 +29,4 @@ program-build: program-docker-build
 
 clean:
 	rm -f solock
+	rm -rf desktop/builddir

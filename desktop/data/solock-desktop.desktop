@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=SoLock
+Comment=Decentralized Password Manager
+Exec=solock-desktop
+Type=Application
+Categories=Utility;Security;
+Keywords=password;manager;solana;
+StartupNotify=true
