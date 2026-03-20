@@ -9,7 +9,7 @@ typedef struct {
 
 static const char *section_names[] = { "vault", "dashboard", "settings" };
 static const char *section_titles[] = { "Vault", "Dashboard", "Settings" };
-static const char *sidebar_labels[] = { "\xf0\x9f\x94\x90 Vault", "\xf0\x9f\x93\x8a Dashboard", "\xe2\x9a\x99 Settings", "\xe2\x8f\xbb Quit" };
+static const char *sidebar_labels[] = { "\xf0\x9f\x94\x90 Vault", "\xf0\x9f\x93\x8a Dashboard", "\xe2\x9a\x99 Settings" };
 
 static void on_sidebar_row_selected(GtkListBox *list, GtkListBoxRow *row, gpointer data)
 {
@@ -58,10 +58,10 @@ GtkWidget *solock_main_window_new(SolockApp *app)
     for (int i = 0; i < 3; i++) {
         GtkWidget *label = gtk_label_new(sidebar_labels[i]);
         gtk_label_set_xalign(GTK_LABEL(label), 0);
-        gtk_widget_set_margin_start(label, 12);
-        gtk_widget_set_margin_end(label, 12);
-        gtk_widget_set_margin_top(label, 8);
-        gtk_widget_set_margin_bottom(label, 8);
+        gtk_widget_set_margin_start(label, 14);
+        gtk_widget_set_margin_end(label, 14);
+        gtk_widget_set_margin_top(label, 10);
+        gtk_widget_set_margin_bottom(label, 10);
         gtk_list_box_append(GTK_LIST_BOX(sidebar_list), label);
     }
     gtk_box_append(GTK_BOX(sidebar_box), sidebar_list);
@@ -73,15 +73,20 @@ GtkWidget *solock_main_window_new(SolockApp *app)
     GtkWidget *quit_list = gtk_list_box_new();
     gtk_widget_add_css_class(quit_list, "navigation-sidebar");
     gtk_list_box_set_selection_mode(GTK_LIST_BOX(quit_list), GTK_SELECTION_NONE);
-    gtk_widget_set_margin_bottom(quit_list, 12);
+    gtk_widget_set_margin_bottom(quit_list, 8);
 
-    GtkWidget *quit_label = gtk_label_new(sidebar_labels[3]);
-    gtk_label_set_xalign(GTK_LABEL(quit_label), 0);
-    gtk_widget_set_margin_start(quit_label, 12);
-    gtk_widget_set_margin_end(quit_label, 12);
-    gtk_widget_set_margin_top(quit_label, 8);
-    gtk_widget_set_margin_bottom(quit_label, 8);
-    gtk_list_box_append(GTK_LIST_BOX(quit_list), quit_label);
+    GtkWidget *quit_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+    gtk_widget_set_margin_start(quit_row, 14);
+    gtk_widget_set_margin_end(quit_row, 14);
+    gtk_widget_set_margin_top(quit_row, 10);
+    gtk_widget_set_margin_bottom(quit_row, 10);
+    GtkWidget *quit_icon = gtk_image_new_from_icon_name("application-exit-symbolic");
+    gtk_image_set_pixel_size(GTK_IMAGE(quit_icon), 16);
+    gtk_box_append(GTK_BOX(quit_row), quit_icon);
+    GtkWidget *quit_text = gtk_label_new("Quit");
+    gtk_label_set_xalign(GTK_LABEL(quit_text), 0);
+    gtk_box_append(GTK_BOX(quit_row), quit_text);
+    gtk_list_box_append(GTK_LIST_BOX(quit_list), quit_row);
     gtk_box_append(GTK_BOX(sidebar_box), quit_list);
 
     AdwNavigationPage *sidebar_page = adw_navigation_page_new(sidebar_box, "Navigation");

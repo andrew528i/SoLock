@@ -141,35 +141,6 @@
     color: rgba(170, 178, 172, 0.55);
 }
 
-.totp-progress trough {
-    min-height: 4px;
-    border-radius: 2px;
-    background: rgba(79, 88, 94, 0.25);
-    border: none;
-    outline: none;
-}
-
-.totp-progress trough block.filled {
-    background-color: rgba(127, 187, 179, 0.8);
-    border-radius: 2px;
-}
-
-.totp-ok trough block.filled {
-    background-color: rgba(167, 192, 128, 0.9);
-}
-
-.totp-warn trough block.filled {
-    background-color: rgba(219, 188, 127, 0.9);
-}
-
-.totp-danger trough block.filled {
-    background-color: rgba(230, 126, 128, 0.9);
-}
-
-.totp-progress trough block.empty {
-    background-color: transparent;
-}
-
 .copied-feedback {
     color: rgba(127, 187, 179, 0.9);
     font-size: 10px;
@@ -185,23 +156,59 @@
     color: rgba(220, 210, 185, 0.7);
 }
 
+/* GLOBAL: all levelbars - rounded, no border, no focus ring */
+levelbar,
+levelbar trough,
+levelbar trough block,
+levelbar trough block.filled,
+levelbar trough block.empty,
+levelbar trough block.full,
+levelbar trough block.high,
+levelbar trough block.low {
+    border: none;
+    outline: none;
+    box-shadow: none;
+    border-radius: 3px;
+}
+
 levelbar trough {
-    border-radius: 2px;
-    border: none;
-    outline: none;
+    min-height: 4px;
+    background: rgba(79, 88, 94, 0.25);
 }
 
-levelbar trough block.filled {
+levelbar trough block.filled,
+levelbar trough block.full,
+levelbar trough block.high {
     background-color: rgba(127, 187, 179, 0.8);
-    border-radius: 2px;
 }
 
-levelbar trough block.empty {
+levelbar trough block.empty,
+levelbar trough block.low {
     background-color: rgba(79, 88, 94, 0.2);
-    border-radius: 2px;
 }
 
-levelbar:focus {
+levelbar:focus,
+levelbar:focus-within,
+levelbar:focus-visible {
     outline: none;
     border: none;
+    box-shadow: none;
+}
+
+.totp-ok trough block.filled,
+.totp-ok trough block.full,
+.totp-ok trough block.high {
+    background-color: rgba(167, 192, 128, 0.9);
+}
+
+.totp-warn trough block.filled,
+.totp-warn trough block.full,
+.totp-warn trough block.high {
+    background-color: rgba(219, 188, 127, 0.9);
+}
+
+.totp-danger trough block.filled,
+.totp-danger trough block.full,
+.totp-danger trough block.high {
+    background-color: rgba(230, 126, 128, 0.9);
 }

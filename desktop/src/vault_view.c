@@ -87,7 +87,7 @@ typedef struct {
     char      *selected_id;
 
     /* detail totp */
-    GtkWidget *detail_totp_code;
+    GtkWidget *detail_totp_row;
     GtkWidget *detail_totp_bar;
     guint      detail_totp_timer;
     char      *detail_totp_secret;
@@ -105,6 +105,9 @@ typedef struct {
     GtkWidget *add_name_entry;
     GtkWidget *add_fields_box;
     GtkWidget *add_save_btn;
+
+    /* sort */
+    guint      sort_mode; /* 0=name, 1=date, 2=type */
 
     /* edit state */
     gboolean   editing;
@@ -130,8 +133,13 @@ static void on_copy_field_clicked(GtkButton *button, gpointer data)
 static void on_copy_totp_clicked(GtkButton *button, gpointer data)
 {
     (void)button;
-    GtkWidget *code_label = data;
-    const char *text = gtk_label_get_text(GTK_LABEL(code_label));
+    const char *text = NULL;
+
+    if (ADW_IS_ACTION_ROW(data))
+        text = adw_action_row_get_subtitle(ADW_ACTION_ROW(data));
+    else if (GTK_IS_LABEL(data))
+        text = gtk_label_get_text(GTK_LABEL(data));
+
     if (!text || !*text) return;
 
     char *clean = g_strdup(text);
@@ -207,6 +215,65 @@ static void vault_update_stats(VaultData *vd)
     adw_action_row_set_subtitle(ADW_ACTION_ROW(vd->stats_totp), buf);
 }
 
+static int sort_compare_name(gconstpointer a, gconstpointer b)
+{
+    JsonObject *oa = json_node_get_object(*(JsonNode **)a);
+    JsonObject *ob = json_node_get_object(*(JsonNode **)b);
+    const char *na = json_object_get_string_member(oa, "name");
+    const char *nb = json_object_get_string_member(ob, "name");
+    return g_strcmp0(na, nb);
+}
+
+static int sort_compare_date(gconstpointer a, gconstpointer b)
+{
+    JsonObject *oa = json_node_get_object(*(JsonNode **)a);
+    JsonObject *ob = json_node_get_object(*(JsonNode **)b);
+    gint64 da = json_object_get_int_member_with_default(oa, "created_at", 0);
+    gint64 db = json_object_get_int_member_with_default(ob, "created_at", 0);
+    if (db > da) return 1;
+    if (db < da) return -1;
+    return 0;
+}
+
+static int sort_compare_type(gconstpointer a, gconstpointer b)
+{
+    JsonObject *oa = json_node_get_object(*(JsonNode **)a);
+    JsonObject *ob = json_node_get_object(*(JsonNode **)b);
+    const char *ta = json_object_get_string_member(oa, "type");
+    const char *tb = json_object_get_string_member(ob, "type");
+    int cmp = g_strcmp0(ta, tb);
+    if (cmp != 0) return cmp;
+    return sort_compare_name(a, b);
+}
+
+static void sort_json_array(JsonArray *arr, guint sort_mode)
+{
+    guint len = json_array_get_length(arr);
+    if (len <= 1) return;
+
+    JsonNode **nodes = g_new(JsonNode *, len);
+    for (guint i = 0; i < len; i++)
+        nodes[i] = json_array_get_element(arr, i);
+
+    GCompareFunc cmp = sort_compare_name;
+    if (sort_mode == 1) cmp = sort_compare_date;
+    else if (sort_mode == 2) cmp = sort_compare_type;
+
+    qsort(nodes, len, sizeof(JsonNode *), cmp);
+
+    for (guint i = 0; i < len; i++)
+        json_node_ref(nodes[i]);
+
+    while (json_array_get_length(arr) > 0)
+        json_array_remove_element(arr, 0);
+
+    for (guint i = 0; i < len; i++) {
+        json_array_add_element(arr, nodes[i]);
+    }
+
+    g_free(nodes);
+}
+
 static void vault_refresh_entries(VaultData *vd)
 {
     GtkWidget *child;
@@ -240,6 +307,7 @@ static void vault_refresh_entries(VaultData *vd)
     }
 
     JsonArray *arr = json_node_get_array(vd->entries);
+    sort_json_array(arr, vd->sort_mode);
     guint len = json_array_get_length(arr);
 
     for (guint i = 0; i < len; i++) {
@@ -263,7 +331,7 @@ static void vault_refresh_entries(VaultData *vd)
         gtk_widget_set_margin_end(row_box, 8);
         gtk_widget_set_margin_top(row_box, 6);
         gtk_widget_set_margin_bottom(row_box, 6);
-        gtk_widget_set_size_request(row_box, -1, 40);
+        gtk_widget_set_size_request(row_box, -1, 48);
 
         GtkWidget *icon = gtk_image_new_from_icon_name(icon_for_type(type));
         gtk_image_set_pixel_size(GTK_IMAGE(icon), 18);
@@ -322,14 +390,14 @@ static void vault_stop_detail_totp(VaultData *vd)
     }
     g_free(vd->detail_totp_secret);
     vd->detail_totp_secret = NULL;
-    vd->detail_totp_code = NULL;
+    vd->detail_totp_row = NULL;
     vd->detail_totp_bar = NULL;
 }
 
 static gboolean vault_update_totp(gpointer data)
 {
     VaultData *vd = data;
-    if (!vd->detail_totp_secret || !vd->detail_totp_code) return G_SOURCE_REMOVE;
+    if (!vd->detail_totp_secret || !vd->detail_totp_row) return G_SOURCE_REMOVE;
 
     SolockClient *client = solock_app_get_client(vd->app);
     JsonNode *result = solock_client_generate_totp(client, vd->detail_totp_secret, 0, 0, NULL);
@@ -345,7 +413,7 @@ static gboolean vault_update_totp(gpointer data)
         formatted = g_strdup_printf("%.3s %.3s", code, code + 3);
     else
         formatted = g_strdup(code);
-    gtk_label_set_text(GTK_LABEL(vd->detail_totp_code), formatted);
+    adw_action_row_set_subtitle(ADW_ACTION_ROW(vd->detail_totp_row), formatted);
     g_free(formatted);
 
     if (vd->detail_totp_bar) {
@@ -443,54 +511,44 @@ static void vault_show_detail(VaultData *vd, JsonObject *obj)
     }
     g_list_free(members);
 
-    gtk_box_append(GTK_BOX(vd->detail_fields_box), group);
-
     gboolean has_totp = json_object_get_boolean_member_with_default(obj, "has_totp", FALSE);
     const char *secret = vault_get_totp_secret(obj);
     if (has_totp && secret && *secret) {
-        GtkWidget *totp_group = adw_preferences_group_new();
-        adw_preferences_group_set_title(ADW_PREFERENCES_GROUP(totp_group), "One-Time Password");
-        gtk_widget_set_margin_top(totp_group, 12);
-        gtk_widget_set_margin_start(totp_group, 4);
-        gtk_widget_set_margin_end(totp_group, 4);
+        vd->detail_totp_row = adw_action_row_new();
+        GtkWidget *totp_row = vd->detail_totp_row;
+        adw_preferences_row_set_title(ADW_PREFERENCES_ROW(totp_row), "One-Time Password");
+        gtk_widget_set_margin_top(totp_row, 4);
+        gtk_widget_set_margin_bottom(totp_row, 4);
+        gtk_widget_set_margin_start(totp_row, 4);
+        gtk_widget_set_margin_end(totp_row, 4);
 
-        GtkWidget *totp_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
-        gtk_widget_set_margin_start(totp_box, 12);
-        gtk_widget_set_margin_end(totp_box, 12);
-        gtk_widget_set_margin_top(totp_box, 8);
-        gtk_widget_set_margin_bottom(totp_box, 8);
-
-        GtkWidget *totp_code_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
-        gtk_widget_set_valign(totp_code_row, GTK_ALIGN_CENTER);
-
-        vd->detail_totp_code = gtk_label_new("--- ---");
-        gtk_widget_add_css_class(vd->detail_totp_code, "title-1");
-        gtk_label_set_xalign(GTK_LABEL(vd->detail_totp_code), 0);
-        gtk_widget_set_hexpand(vd->detail_totp_code, TRUE);
-        gtk_box_append(GTK_BOX(totp_code_row), vd->detail_totp_code);
+        adw_action_row_set_subtitle(ADW_ACTION_ROW(totp_row), "--- ---");
 
         GtkWidget *totp_copy_btn = gtk_button_new_from_icon_name("edit-copy-symbolic");
         gtk_widget_add_css_class(totp_copy_btn, "flat");
         gtk_widget_set_valign(totp_copy_btn, GTK_ALIGN_CENTER);
         g_signal_connect(totp_copy_btn, "clicked",
-                         G_CALLBACK(on_copy_totp_clicked), vd->detail_totp_code);
-        gtk_box_append(GTK_BOX(totp_code_row), totp_copy_btn);
+                         G_CALLBACK(on_copy_totp_clicked), totp_row);
+        adw_action_row_add_suffix(ADW_ACTION_ROW(totp_row), totp_copy_btn);
 
-        gtk_box_append(GTK_BOX(totp_box), totp_code_row);
+        adw_preferences_group_add(ADW_PREFERENCES_GROUP(group), totp_row);
 
         vd->detail_totp_bar = gtk_level_bar_new_for_interval(0.0, 1.0);
         gtk_level_bar_set_value(GTK_LEVEL_BAR(vd->detail_totp_bar), 1.0);
         gtk_widget_add_css_class(vd->detail_totp_bar, "totp-progress");
         gtk_widget_set_margin_top(vd->detail_totp_bar, 4);
-        gtk_box_append(GTK_BOX(totp_box), vd->detail_totp_bar);
-
-        adw_preferences_group_add(ADW_PREFERENCES_GROUP(totp_group), totp_box);
-        gtk_box_append(GTK_BOX(vd->detail_fields_box), totp_group);
+        gtk_widget_set_margin_start(vd->detail_totp_bar, 8);
+        gtk_widget_set_margin_end(vd->detail_totp_bar, 8);
 
         vd->detail_totp_secret = g_strdup(secret);
         vault_update_totp(vd);
         vd->detail_totp_timer = g_timeout_add_seconds(1, vault_update_totp, vd);
     }
+
+    gtk_box_append(GTK_BOX(vd->detail_fields_box), group);
+
+    if (vd->detail_totp_bar)
+        gtk_box_append(GTK_BOX(vd->detail_fields_box), vd->detail_totp_bar);
 
     gtk_widget_set_visible(vd->detail_action_bar, TRUE);
     gtk_stack_set_visible_child_name(GTK_STACK(vd->detail_stack), "detail");
@@ -833,6 +891,14 @@ static void on_add_cancel_clicked(GtkButton *button, gpointer data)
     gtk_stack_set_visible_child_name(GTK_STACK(vd->add_stack), "list");
 }
 
+static void on_sort_changed(GtkDropDown *dropdown, GParamSpec *pspec, gpointer data)
+{
+    (void)pspec;
+    VaultData *vd = data;
+    vd->sort_mode = gtk_drop_down_get_selected(dropdown);
+    vault_refresh_entries(vd);
+}
+
 static void on_add_button_clicked(GtkButton *button, gpointer data)
 {
     (void)button;
@@ -841,6 +907,25 @@ static void on_add_button_clicked(GtkButton *button, gpointer data)
     gtk_drop_down_set_selected(GTK_DROP_DOWN(vd->add_type_dropdown), 0);
     on_add_type_changed(NULL, NULL, vd);
     gtk_stack_set_visible_child_name(GTK_STACK(vd->add_stack), "add");
+}
+
+/* key handling */
+
+static gboolean on_detail_key_pressed(GtkEventControllerKey *ctrl, guint keyval,
+                                       guint keycode, GdkModifierType state, gpointer data)
+{
+    (void)ctrl; (void)keycode; (void)state;
+    VaultData *vd = data;
+
+    if (keyval == GDK_KEY_Escape) {
+        const char *visible = gtk_stack_get_visible_child_name(GTK_STACK(vd->detail_stack));
+        if (g_strcmp0(visible, "detail") == 0) {
+            vault_clear_detail(vd);
+            gtk_list_box_unselect_all(GTK_LIST_BOX(vd->list_box));
+            return TRUE;
+        }
+    }
+    return FALSE;
 }
 
 /* build */
@@ -941,6 +1026,13 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
     g_signal_connect(vd->search_entry, "search-changed", G_CALLBACK(on_search_changed), vd);
     gtk_box_append(GTK_BOX(toolbar), vd->search_entry);
 
+    const char *sort_options[] = { "Name", "Date", "Type", NULL };
+    GtkWidget *sort_dropdown = gtk_drop_down_new_from_strings(sort_options);
+    gtk_drop_down_set_selected(GTK_DROP_DOWN(sort_dropdown), 0);
+    gtk_widget_set_tooltip_text(sort_dropdown, "Sort by");
+    g_signal_connect(sort_dropdown, "notify::selected", G_CALLBACK(on_sort_changed), vd);
+    gtk_box_append(GTK_BOX(toolbar), sort_dropdown);
+
     GtkWidget *add_btn = gtk_button_new_from_icon_name("list-add-symbolic");
     gtk_widget_add_css_class(add_btn, "flat");
     gtk_widget_set_tooltip_text(add_btn, "Add entry");
@@ -974,10 +1066,11 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
 
     /* empty state - summary */
     vd->detail_empty = gtk_box_new(GTK_ORIENTATION_VERTICAL, 12);
-    gtk_widget_set_valign(vd->detail_empty, GTK_ALIGN_CENTER);
+    gtk_widget_set_valign(vd->detail_empty, GTK_ALIGN_START);
     gtk_widget_set_halign(vd->detail_empty, GTK_ALIGN_CENTER);
     gtk_widget_set_margin_start(vd->detail_empty, 24);
     gtk_widget_set_margin_end(vd->detail_empty, 24);
+    gtk_widget_set_margin_top(vd->detail_empty, 24);
 
     GtkWidget *empty_icon = gtk_image_new_from_icon_name("dialog-password-symbolic");
     gtk_image_set_pixel_size(GTK_IMAGE(empty_icon), 48);
@@ -986,6 +1079,10 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
 
     GtkWidget *stats_group = adw_preferences_group_new();
     adw_preferences_group_set_title(ADW_PREFERENCES_GROUP(stats_group), "Summary");
+    gtk_widget_set_margin_start(stats_group, 12);
+    gtk_widget_set_margin_end(stats_group, 12);
+    gtk_widget_set_margin_top(stats_group, 12);
+    gtk_widget_set_margin_bottom(stats_group, 12);
 
     vd->stats_total = adw_action_row_new();
     adw_preferences_row_set_title(ADW_PREFERENCES_ROW(vd->stats_total), "Total Entries");
@@ -1021,7 +1118,8 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
                                    GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
 
     vd->detail_view = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-    gtk_widget_set_valign(vd->detail_view, GTK_ALIGN_START);
+    gtk_widget_set_valign(vd->detail_view, GTK_ALIGN_FILL);
+    gtk_widget_set_vexpand(vd->detail_view, TRUE);
     gtk_widget_set_margin_start(vd->detail_view, 16);
     gtk_widget_set_margin_end(vd->detail_view, 16);
     gtk_widget_set_margin_top(vd->detail_view, 12);
@@ -1049,6 +1147,11 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
     vd->detail_fields_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     gtk_box_append(GTK_BOX(vd->detail_view), vd->detail_fields_box);
 
+    /* spacer to push action buttons to bottom */
+    GtkWidget *detail_spacer = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    gtk_widget_set_vexpand(detail_spacer, TRUE);
+    gtk_box_append(GTK_BOX(vd->detail_view), detail_spacer);
+
     /* action buttons */
     vd->detail_action_bar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
     gtk_widget_set_margin_top(vd->detail_action_bar, 16);
@@ -1075,6 +1178,10 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
 
     vault_refresh_entries(vd);
     gtk_list_box_unselect_all(GTK_LIST_BOX(vd->list_box));
+
+    GtkEventController *key_ctrl = gtk_event_controller_key_new();
+    g_signal_connect(key_ctrl, "key-pressed", G_CALLBACK(on_detail_key_pressed), vd);
+    gtk_widget_add_controller(paned, key_ctrl);
 
     return paned;
 }

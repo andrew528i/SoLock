@@ -229,9 +229,16 @@ static void refresh_entries(SearchData *sd)
         g_error_free(error);
     }
 
-    if (!sd->entries) return;
-
-    if (JSON_NODE_TYPE(sd->entries) != JSON_NODE_ARRAY) return;
+    if (!sd->entries || JSON_NODE_TYPE(sd->entries) != JSON_NODE_ARRAY) {
+        if (gtk_revealer_get_reveal_child(GTK_REVEALER(sd->search_revealer))) {
+            GtkWidget *no_results = gtk_label_new("No results");
+            gtk_widget_add_css_class(no_results, "dim-label");
+            gtk_widget_set_margin_top(no_results, 8);
+            gtk_widget_set_margin_bottom(no_results, 8);
+            gtk_list_box_append(GTK_LIST_BOX(sd->list_box), no_results);
+        }
+        return;
+    }
 
     JsonArray *arr = json_node_get_array(sd->entries);
     guint len = json_array_get_length(arr);
@@ -259,6 +266,7 @@ static void refresh_entries(SearchData *sd)
         gtk_widget_set_margin_end(row_box, 6);
         gtk_widget_set_margin_top(row_box, 4);
         gtk_widget_set_margin_bottom(row_box, 4);
+        gtk_widget_set_size_request(row_box, -1, 48);
 
         char lbl_char = label_char_for_index(i);
         GtkWidget *hint_revealer = gtk_revealer_new();
@@ -308,6 +316,15 @@ static void refresh_entries(SearchData *sd)
         }
 
         gtk_list_box_append(GTK_LIST_BOX(sd->list_box), row_box);
+    }
+
+    if (len == 0 && gtk_revealer_get_reveal_child(GTK_REVEALER(sd->search_revealer))) {
+        GtkWidget *no_results = gtk_label_new("No results");
+        gtk_widget_add_css_class(no_results, "dim-label");
+        gtk_widget_set_margin_top(no_results, 8);
+        gtk_widget_set_margin_bottom(no_results, 8);
+        gtk_list_box_append(GTK_LIST_BOX(sd->list_box), no_results);
+        return;
     }
 
     GtkListBoxRow *first = gtk_list_box_get_row_at_index(GTK_LIST_BOX(sd->list_box), 0);

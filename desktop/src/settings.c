@@ -130,7 +130,7 @@ GtkWidget *solock_settings_view_new(SolockApp *app)
     gtk_widget_set_margin_end(sep, 16);
     gtk_box_append(GTK_BOX(box), sep);
 
-    const char *network_options[] = { "devnet", "mainnet-beta", NULL };
+    const char *network_options[] = { "devnet", "mainnet", NULL };
     sd->network_dropdown = gtk_drop_down_new_from_strings(network_options);
     gtk_drop_down_set_selected(GTK_DROP_DOWN(sd->network_dropdown), 0);
     gtk_box_append(GTK_BOX(box), settings_row("\xf0\x9f\x8c\x90 Network", sd->network_dropdown));

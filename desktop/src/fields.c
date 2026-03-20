@@ -40,7 +40,7 @@ static const char *human_label(const char *key)
     if (g_strcmp0(key, "expiry") == 0)     return "Expiry";
     if (g_strcmp0(key, "cardholder") == 0) return "Cardholder";
     if (g_strcmp0(key, "content") == 0)    return "Content";
-    if (g_strcmp0(key, "notes") == 0)      return "Notes";
+    if (g_strcmp0(key, "notes") == 0)      return "Note";
     return key;
 }
 

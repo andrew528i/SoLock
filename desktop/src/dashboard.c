@@ -172,8 +172,8 @@ static GtkWidget *make_action_row(const char *title, const char *subtitle)
     adw_action_row_set_subtitle_selectable(ADW_ACTION_ROW(row), TRUE);
     gtk_widget_set_margin_top(row, 4);
     gtk_widget_set_margin_bottom(row, 4);
-    gtk_widget_set_margin_start(row, 4);
-    gtk_widget_set_margin_end(row, 4);
+    gtk_widget_set_margin_start(row, 8);
+    gtk_widget_set_margin_end(row, 8);
     return row;
 }
 
@@ -319,7 +319,7 @@ GtkWidget *solock_dashboard_view_new(SolockApp *app)
     gtk_box_append(GTK_BOX(box), sync_group);
 
     GtkWidget *clear_btn = gtk_button_new_with_label("Clear Local DB");
-    gtk_widget_add_css_class(clear_btn, "destructive-action");
+    gtk_widget_add_css_class(clear_btn, "flat");
     gtk_widget_set_halign(clear_btn, GTK_ALIGN_START);
     gtk_widget_set_margin_top(clear_btn, 16);
     g_signal_connect(clear_btn, "clicked", G_CALLBACK(on_clear_local_db_clicked), dd);
