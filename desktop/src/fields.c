@@ -349,7 +349,7 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
             tcd->label = totp_code;
             g_object_set_data_full(G_OBJECT(totp_code), "totp-click-data", tcd, totp_click_data_free);
 
-            GtkGestureClick *click = gtk_gesture_click_new();
+            GtkGestureClick *click = GTK_GESTURE_CLICK(gtk_gesture_click_new());
             g_signal_connect(click, "pressed", G_CALLBACK(on_totp_clicked), tcd);
             gtk_widget_add_controller(totp_section, GTK_EVENT_CONTROLLER(click));
             gtk_widget_set_cursor_from_name(totp_section, "pointer");
@@ -434,7 +434,7 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
         fcd->value_label = value_label;
         g_object_set_data_full(G_OBJECT(row), "field-click-data", fcd, field_click_data_free);
 
-        GtkGestureClick *click = gtk_gesture_click_new();
+        GtkGestureClick *click = GTK_GESTURE_CLICK(gtk_gesture_click_new());
         g_signal_connect(click, "pressed", G_CALLBACK(on_field_clicked), fcd);
         gtk_widget_add_controller(row, GTK_EVENT_CONTROLLER(click));
         gtk_widget_set_cursor_from_name(row, "pointer");
