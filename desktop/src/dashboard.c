@@ -155,7 +155,27 @@ static void dashboard_refresh(DashboardData *dd)
 static void on_refresh_clicked(GtkButton *button, gpointer data)
 {
     (void)button;
-    dashboard_refresh(data);
+    DashboardData *dd = data;
+
+    SolockClient *client = solock_app_get_client(dd->app);
+    if (solock_client_is_locked(client)) return;
+
+    gtk_widget_set_sensitive(dd->refresh_btn, FALSE);
+    gtk_widget_set_visible(dd->spinner, TRUE);
+    gtk_spinner_start(GTK_SPINNER(dd->spinner));
+
+    GError *error = NULL;
+    solock_client_sync(client, &error);
+    if (error) {
+        g_warning("Sync failed: %s", error->message);
+        g_error_free(error);
+    }
+
+    gtk_spinner_stop(GTK_SPINNER(dd->spinner));
+    gtk_widget_set_visible(dd->spinner, FALSE);
+    gtk_widget_set_sensitive(dd->refresh_btn, TRUE);
+
+    dashboard_refresh(dd);
 }
 
 static void on_clear_local_db_clicked(GtkButton *button, gpointer data)
@@ -215,22 +235,6 @@ GtkWidget *solock_dashboard_view_new(SolockApp *app)
     gtk_widget_set_margin_bottom(clamp, 16);
 
     GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-
-    /* refresh button + spinner */
-    GtkWidget *toolbar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
-    gtk_widget_set_halign(toolbar, GTK_ALIGN_END);
-    gtk_widget_set_margin_bottom(toolbar, 8);
-
-    dd->spinner = gtk_spinner_new();
-    gtk_widget_set_visible(dd->spinner, FALSE);
-    gtk_box_append(GTK_BOX(toolbar), dd->spinner);
-
-    dd->refresh_btn = gtk_button_new_from_icon_name("view-refresh-symbolic");
-    gtk_widget_add_css_class(dd->refresh_btn, "flat");
-    g_signal_connect(dd->refresh_btn, "clicked", G_CALLBACK(on_refresh_clicked), dd);
-    gtk_box_append(GTK_BOX(toolbar), dd->refresh_btn);
-
-    gtk_box_append(GTK_BOX(box), toolbar);
 
     /* network indicator */
     GtkWidget *network_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
@@ -328,12 +332,29 @@ GtkWidget *solock_dashboard_view_new(SolockApp *app)
 
     gtk_box_append(GTK_BOX(box), sync_group);
 
+    GtkWidget *bottom_bar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+    gtk_widget_set_margin_top(bottom_bar, 16);
+    gtk_widget_set_margin_bottom(bottom_bar, 8);
+
+    dd->refresh_btn = gtk_button_new_with_label("Sync");
+    gtk_widget_add_css_class(dd->refresh_btn, "flat");
+    g_signal_connect(dd->refresh_btn, "clicked", G_CALLBACK(on_refresh_clicked), dd);
+    gtk_box_append(GTK_BOX(bottom_bar), dd->refresh_btn);
+
+    dd->spinner = gtk_spinner_new();
+    gtk_widget_set_visible(dd->spinner, FALSE);
+    gtk_box_append(GTK_BOX(bottom_bar), dd->spinner);
+
+    GtkWidget *spacer = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_widget_set_hexpand(spacer, TRUE);
+    gtk_box_append(GTK_BOX(bottom_bar), spacer);
+
     GtkWidget *clear_btn = gtk_button_new_with_label("Clear Local DB");
-    gtk_widget_add_css_class(clear_btn, "flat");
-    gtk_widget_set_halign(clear_btn, GTK_ALIGN_START);
-    gtk_widget_set_margin_top(clear_btn, 16);
+    gtk_widget_add_css_class(clear_btn, "destructive-action");
     g_signal_connect(clear_btn, "clicked", G_CALLBACK(on_clear_local_db_clicked), dd);
-    gtk_box_append(GTK_BOX(box), clear_btn);
+    gtk_box_append(GTK_BOX(bottom_bar), clear_btn);
+
+    gtk_box_append(GTK_BOX(box), bottom_bar);
 
     adw_clamp_set_child(ADW_CLAMP(clamp), box);
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scroll), clamp);

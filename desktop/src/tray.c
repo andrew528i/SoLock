@@ -15,13 +15,11 @@ extern void          solock_app_show_main_window(SolockApp *app);
 
 enum {
     MENU_ID_ROOT = 0,
-    MENU_ID_SHOW = 1,
-    MENU_ID_SEP1 = 2,
-    MENU_ID_STATUS = 3,
-    MENU_ID_LOCK = 4,
-    MENU_ID_MANAGE = 5,
-    MENU_ID_SEP2 = 6,
-    MENU_ID_QUIT = 7,
+    MENU_ID_STATUS = 1,
+    MENU_ID_LOCK = 2,
+    MENU_ID_MANAGE = 3,
+    MENU_ID_SEP = 4,
+    MENU_ID_QUIT = 5,
 };
 
 typedef struct {
@@ -160,12 +158,6 @@ static GVariant *build_menu_layout(void)
     GVariantBuilder children;
     g_variant_builder_init(&children, G_VARIANT_TYPE("av"));
 
-    g_variant_builder_add(&children, "v",
-        build_menu_item_variant(MENU_ID_SHOW, "Show Vault", NULL, TRUE, TRUE));
-
-    g_variant_builder_add(&children, "v",
-        build_menu_item_variant(MENU_ID_SEP1, NULL, "separator", TRUE, TRUE));
-
     const char *status_text = tray->locked ? "Locked" : "Unlocked";
     g_variant_builder_add(&children, "v",
         build_menu_item_variant(MENU_ID_STATUS, status_text, NULL, FALSE, TRUE));
@@ -178,7 +170,7 @@ static GVariant *build_menu_layout(void)
         build_menu_item_variant(MENU_ID_MANAGE, "Manage Vault", NULL, !tray->locked, TRUE));
 
     g_variant_builder_add(&children, "v",
-        build_menu_item_variant(MENU_ID_SEP2, NULL, "separator", TRUE, TRUE));
+        build_menu_item_variant(MENU_ID_SEP, NULL, "separator", TRUE, TRUE));
 
     g_variant_builder_add(&children, "v",
         build_menu_item_variant(MENU_ID_QUIT, "Quit", NULL, TRUE, TRUE));
@@ -189,9 +181,6 @@ static GVariant *build_menu_layout(void)
 static void handle_menu_event(int id)
 {
     switch (id) {
-    case MENU_ID_SHOW:
-        solock_popup_toggle(solock_app_get_popup(tray->app));
-        break;
     case MENU_ID_LOCK:
         if (tray->locked) {
             solock_popup_show(solock_app_get_popup(tray->app));
@@ -333,13 +322,7 @@ static void menu_method_call(GDBusConnection *conn, const char *sender,
             g_variant_builder_init(&props, G_VARIANT_TYPE("a{sv}"));
 
             switch (req_id) {
-            case MENU_ID_SHOW:
-                g_variant_builder_add(&props, "{sv}", "label", g_variant_new_string("Show Vault"));
-                g_variant_builder_add(&props, "{sv}", "enabled", g_variant_new_boolean(TRUE));
-                g_variant_builder_add(&props, "{sv}", "visible", g_variant_new_boolean(TRUE));
-                break;
-            case MENU_ID_SEP1:
-            case MENU_ID_SEP2:
+            case MENU_ID_SEP:
                 g_variant_builder_add(&props, "{sv}", "type", g_variant_new_string("separator"));
                 g_variant_builder_add(&props, "{sv}", "enabled", g_variant_new_boolean(TRUE));
                 g_variant_builder_add(&props, "{sv}", "visible", g_variant_new_boolean(TRUE));
@@ -386,7 +369,6 @@ static void menu_method_call(GDBusConnection *conn, const char *sender,
         GVariant *val = NULL;
         if (g_strcmp0(prop_name, "label") == 0) {
             switch (prop_id) {
-            case MENU_ID_SHOW: val = g_variant_new_string("Show Vault"); break;
             case MENU_ID_STATUS: val = g_variant_new_string(tray->locked ? "Locked" : "Unlocked"); break;
             case MENU_ID_LOCK: val = g_variant_new_string(tray->locked ? "Unlock" : "Lock"); break;
             case MENU_ID_MANAGE: val = g_variant_new_string("Manage Vault"); break;
@@ -403,7 +385,7 @@ static void menu_method_call(GDBusConnection *conn, const char *sender,
         } else if (g_strcmp0(prop_name, "visible") == 0) {
             val = g_variant_new_boolean(TRUE);
         } else if (g_strcmp0(prop_name, "type") == 0) {
-            if (prop_id == MENU_ID_SEP1 || prop_id == MENU_ID_SEP2)
+            if (prop_id == MENU_ID_SEP)
                 val = g_variant_new_string("separator");
             else
                 val = g_variant_new_string("");

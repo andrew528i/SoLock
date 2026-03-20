@@ -236,6 +236,23 @@ static void refresh_entries(SearchData *sd)
             gtk_widget_set_margin_top(no_results, 8);
             gtk_widget_set_margin_bottom(no_results, 8);
             gtk_list_box_append(GTK_LIST_BOX(sd->list_box), no_results);
+        } else {
+            GtkWidget *empty_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
+            gtk_widget_set_halign(empty_box, GTK_ALIGN_CENTER);
+            gtk_widget_set_valign(empty_box, GTK_ALIGN_CENTER);
+            gtk_widget_set_margin_top(empty_box, 24);
+            gtk_widget_set_margin_bottom(empty_box, 24);
+
+            GtkWidget *empty_title = gtk_label_new("No entries yet");
+            gtk_widget_add_css_class(empty_title, "dim-label");
+            gtk_box_append(GTK_BOX(empty_box), empty_title);
+
+            GtkWidget *empty_sub = gtk_label_new("Add passwords via Manage Vault");
+            gtk_widget_add_css_class(empty_sub, "dim-label");
+            gtk_widget_add_css_class(empty_sub, "caption");
+            gtk_box_append(GTK_BOX(empty_box), empty_sub);
+
+            gtk_list_box_append(GTK_LIST_BOX(sd->list_box), empty_box);
         }
         return;
     }
@@ -319,12 +336,31 @@ static void refresh_entries(SearchData *sd)
         gtk_list_box_append(GTK_LIST_BOX(sd->list_box), row_box);
     }
 
-    if (len == 0 && gtk_revealer_get_reveal_child(GTK_REVEALER(sd->search_revealer))) {
-        GtkWidget *no_results = gtk_label_new("No results");
-        gtk_widget_add_css_class(no_results, "dim-label");
-        gtk_widget_set_margin_top(no_results, 8);
-        gtk_widget_set_margin_bottom(no_results, 8);
-        gtk_list_box_append(GTK_LIST_BOX(sd->list_box), no_results);
+    if (len == 0) {
+        if (gtk_revealer_get_reveal_child(GTK_REVEALER(sd->search_revealer))) {
+            GtkWidget *no_results = gtk_label_new("No results");
+            gtk_widget_add_css_class(no_results, "dim-label");
+            gtk_widget_set_margin_top(no_results, 8);
+            gtk_widget_set_margin_bottom(no_results, 8);
+            gtk_list_box_append(GTK_LIST_BOX(sd->list_box), no_results);
+        } else {
+            GtkWidget *empty_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
+            gtk_widget_set_halign(empty_box, GTK_ALIGN_CENTER);
+            gtk_widget_set_valign(empty_box, GTK_ALIGN_CENTER);
+            gtk_widget_set_margin_top(empty_box, 24);
+            gtk_widget_set_margin_bottom(empty_box, 24);
+
+            GtkWidget *empty_title = gtk_label_new("No entries yet");
+            gtk_widget_add_css_class(empty_title, "dim-label");
+            gtk_box_append(GTK_BOX(empty_box), empty_title);
+
+            GtkWidget *empty_sub = gtk_label_new("Add passwords via Manage Vault");
+            gtk_widget_add_css_class(empty_sub, "dim-label");
+            gtk_widget_add_css_class(empty_sub, "caption");
+            gtk_box_append(GTK_BOX(empty_box), empty_sub);
+
+            gtk_list_box_append(GTK_LIST_BOX(sd->list_box), empty_box);
+        }
         return;
     }
 
@@ -372,6 +408,7 @@ GtkWidget *solock_search_view_new(SolockApp *app)
     GtkWidget *list_box = gtk_list_box_new();
     gtk_list_box_set_selection_mode(GTK_LIST_BOX(list_box), GTK_SELECTION_SINGLE);
     gtk_widget_add_css_class(list_box, "entry-list");
+    gtk_widget_set_margin_top(list_box, 6);
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scroll), list_box);
     gtk_box_append(GTK_BOX(box), scroll);
 

@@ -482,7 +482,7 @@ static void vault_show_detail(VaultData *vd, JsonObject *obj)
             continue;
 
         const char *value = json_object_get_string_member(fields, key);
-        if (!value) value = "";
+        if (!value || !*value) continue;
 
         GtkWidget *row = adw_action_row_new();
         adw_preferences_row_set_title(ADW_PREFERENCES_ROW(row), human_label(key));
@@ -529,6 +529,7 @@ static void vault_show_detail(VaultData *vd, JsonObject *obj)
         gtk_widget_add_css_class(vd->detail_totp_bar, "totp-progress");
         gtk_widget_set_size_request(vd->detail_totp_bar, 60, -1);
         gtk_widget_set_valign(vd->detail_totp_bar, GTK_ALIGN_CENTER);
+        gtk_widget_set_margin_end(vd->detail_totp_bar, 4);
         adw_action_row_add_suffix(ADW_ACTION_ROW(totp_row), vd->detail_totp_bar);
 
         GtkWidget *totp_copy_btn = gtk_button_new_from_icon_name("edit-copy-symbolic");
@@ -1079,7 +1080,7 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
     adw_preferences_group_set_title(ADW_PREFERENCES_GROUP(stats_group), "Summary");
     gtk_widget_set_margin_start(stats_group, 0);
     gtk_widget_set_margin_end(stats_group, 0);
-    gtk_widget_set_margin_top(stats_group, 12);
+    gtk_widget_set_margin_top(stats_group, 16);
     gtk_widget_set_margin_bottom(stats_group, 12);
 
     vd->stats_total = adw_action_row_new();

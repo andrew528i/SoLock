@@ -56,6 +56,25 @@ static gboolean is_sensitive_field(const char *key)
            g_strcmp0(key, "number") == 0;
 }
 
+static int field_priority(const char *key)
+{
+    static const char *order[] = {
+        "username", "password", "totp", "site",
+        "cardholder", "number", "cvv", "expiry",
+        "content", "notes", NULL
+    };
+    for (int i = 0; order[i]; i++) {
+        if (g_strcmp0(key, order[i]) == 0)
+            return i;
+    }
+    return 100;
+}
+
+static int compare_field_keys(gconstpointer a, gconstpointer b)
+{
+    return field_priority((const char *)a) - field_priority((const char *)b);
+}
+
 static const char *type_display_name(const char *type)
 {
     if (g_strcmp0(type, "password") == 0) return "Password";
@@ -355,10 +374,10 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
     gboolean has_totp = json_object_get_boolean_member_with_default(obj, "has_totp", FALSE);
 
     GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-    gtk_widget_set_margin_start(box, 14);
-    gtk_widget_set_margin_end(box, 14);
-    gtk_widget_set_margin_top(box, 12);
-    gtk_widget_set_margin_bottom(box, 12);
+    gtk_widget_set_margin_start(box, 8);
+    gtk_widget_set_margin_end(box, 8);
+    gtk_widget_set_margin_top(box, 8);
+    gtk_widget_set_margin_bottom(box, 8);
     gtk_widget_set_size_request(box, 280, -1);
 
     DetailData *dd = g_new0(DetailData, 1);
@@ -367,15 +386,32 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
     dd->box = box;
     dd->label_mode = FALSE;
 
+    const char *site_value = NULL;
+    if (fields && json_object_has_member(fields, "site"))
+        site_value = json_object_get_string_member(fields, "site");
+
     GtkWidget *header = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
     gtk_widget_set_margin_bottom(header, 10);
+
+    GtkWidget *title_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
+    gtk_widget_set_hexpand(title_box, TRUE);
 
     GtkWidget *title = gtk_label_new(name);
     gtk_widget_add_css_class(title, "detail-name");
     gtk_label_set_xalign(GTK_LABEL(title), 0);
     gtk_label_set_ellipsize(GTK_LABEL(title), PANGO_ELLIPSIZE_END);
-    gtk_widget_set_hexpand(title, TRUE);
-    gtk_box_append(GTK_BOX(header), title);
+    gtk_box_append(GTK_BOX(title_box), title);
+
+    if (site_value && *site_value) {
+        GtkWidget *site_label = gtk_label_new(site_value);
+        gtk_widget_add_css_class(site_label, "dim-label");
+        gtk_widget_add_css_class(site_label, "caption");
+        gtk_label_set_xalign(GTK_LABEL(site_label), 0);
+        gtk_label_set_ellipsize(GTK_LABEL(site_label), PANGO_ELLIPSIZE_END);
+        gtk_box_append(GTK_BOX(title_box), site_label);
+    }
+
+    gtk_box_append(GTK_BOX(header), title_box);
 
     GtkWidget *type_label = gtk_label_new(type_display_name(type));
     gtk_widget_add_css_class(type_label, "detail-meta");
@@ -385,10 +421,12 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
     gtk_box_append(GTK_BOX(box), header);
 
     GList *members = json_object_get_members(fields);
+    members = g_list_sort(members, compare_field_keys);
     int field_count = 0;
     for (GList *l = members; l; l = l->next) {
         const char *key = l->data;
-        if (!is_hidden_field(key)) field_count++;
+        if (!is_hidden_field(key) && g_strcmp0(key, "site") != 0)
+            field_count++;
     }
 
     int totp_idx = field_count;
@@ -403,6 +441,7 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
     for (GList *l = members; l; l = l->next) {
         const char *key = l->data;
         if (is_hidden_field(key)) continue;
+        if (g_strcmp0(key, "site") == 0) continue;
 
         const char *value = json_object_get_string_member(fields, key);
         if (!value) value = "";
