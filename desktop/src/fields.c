@@ -131,11 +131,7 @@ static void on_field_clicked(GtkGestureClick *gesture, int n_press, double x, do
 {
     (void)gesture; (void)n_press; (void)x; (void)y;
     FieldClickData *fcd = data;
-
-    SolockConfig *config = solock_app_get_config(fcd->app);
-    int clear = solock_config_get_clipboard_clear_seconds(config);
-    solock_clipboard_copy(fcd->value, clear, NULL);
-    show_copied_feedback(fcd->value_label);
+    do_paste_value(fcd->app, fcd->value);
 }
 
 typedef struct {
@@ -159,7 +155,9 @@ static void on_totp_clicked(GtkGestureClick *gesture, int n_press, double x, dou
     SolockConfig *config = solock_app_get_config(tcd->app);
     int clear = solock_config_get_clipboard_clear_seconds(config);
     solock_clipboard_copy(tcd->code, clear, NULL);
-    show_copied_feedback(tcd->label);
+
+    GtkWidget *popup = solock_app_get_popup(tcd->app);
+    solock_popup_hide(popup);
 }
 
 static const char *get_totp_secret(JsonObject *obj)
@@ -288,10 +286,11 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
     gboolean has_totp = json_object_get_boolean_member_with_default(obj, "has_totp", FALSE);
 
     GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-    gtk_widget_set_margin_start(box, 20);
-    gtk_widget_set_margin_end(box, 20);
-    gtk_widget_set_margin_top(box, 20);
-    gtk_widget_set_margin_bottom(box, 20);
+    gtk_widget_set_margin_start(box, 12);
+    gtk_widget_set_margin_end(box, 12);
+    gtk_widget_set_margin_top(box, 10);
+    gtk_widget_set_margin_bottom(box, 10);
+    gtk_widget_set_size_request(box, 280, -1);
 
     DetailData *dd = g_new0(DetailData, 1);
     dd->app = app;
@@ -299,23 +298,22 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
     dd->box = box;
     dd->label_mode = FALSE;
 
+    GtkWidget *header = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+    gtk_widget_set_margin_bottom(header, 6);
+
     GtkWidget *title = gtk_label_new(name);
-    gtk_widget_add_css_class(title, "title-3");
+    gtk_widget_add_css_class(title, "detail-name");
     gtk_label_set_xalign(GTK_LABEL(title), 0);
     gtk_label_set_ellipsize(GTK_LABEL(title), PANGO_ELLIPSIZE_END);
-    gtk_box_append(GTK_BOX(box), title);
+    gtk_widget_set_hexpand(title, TRUE);
+    gtk_box_append(GTK_BOX(header), title);
 
     GtkWidget *type_label = gtk_label_new(type_display_name(type));
-    gtk_widget_add_css_class(type_label, "detail-type");
-    gtk_widget_add_css_class(type_label, "dim-label");
-    gtk_label_set_xalign(GTK_LABEL(type_label), 0);
-    gtk_widget_set_margin_top(type_label, 2);
-    gtk_widget_set_margin_bottom(type_label, 12);
-    gtk_box_append(GTK_BOX(box), type_label);
+    gtk_widget_add_css_class(type_label, "detail-meta");
+    gtk_widget_set_valign(type_label, GTK_ALIGN_CENTER);
+    gtk_box_append(GTK_BOX(header), type_label);
 
-    GtkWidget *sep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
-    gtk_widget_set_margin_bottom(sep, 8);
-    gtk_box_append(GTK_BOX(box), sep);
+    gtk_box_append(GTK_BOX(box), header);
 
     if (has_totp) {
         const char *secret = get_totp_secret(obj);

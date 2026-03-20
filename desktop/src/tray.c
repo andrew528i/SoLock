@@ -319,13 +319,94 @@ static void menu_method_call(GDBusConnection *conn, const char *sender,
         g_dbus_method_invocation_return_value(invocation,
             g_variant_new("(aiai)", &updates, &errors));
     } else if (g_strcmp0(method, "GetGroupProperties") == 0) {
-        GVariantBuilder b;
-        g_variant_builder_init(&b, G_VARIANT_TYPE("a(ia{sv})"));
+        GVariantIter *id_iter;
+        GVariantIter *prop_iter;
+        g_variant_get(params, "(aias)", &id_iter, &prop_iter);
+        g_variant_iter_free(prop_iter);
+
+        GVariantBuilder result;
+        g_variant_builder_init(&result, G_VARIANT_TYPE("a(ia{sv})"));
+
+        gint32 req_id;
+        while (g_variant_iter_next(id_iter, "i", &req_id)) {
+            GVariantBuilder props;
+            g_variant_builder_init(&props, G_VARIANT_TYPE("a{sv}"));
+
+            switch (req_id) {
+            case MENU_ID_SHOW:
+                g_variant_builder_add(&props, "{sv}", "label", g_variant_new_string("Show Vault"));
+                g_variant_builder_add(&props, "{sv}", "enabled", g_variant_new_boolean(TRUE));
+                g_variant_builder_add(&props, "{sv}", "visible", g_variant_new_boolean(TRUE));
+                break;
+            case MENU_ID_SEP1:
+            case MENU_ID_SEP2:
+                g_variant_builder_add(&props, "{sv}", "type", g_variant_new_string("separator"));
+                g_variant_builder_add(&props, "{sv}", "enabled", g_variant_new_boolean(TRUE));
+                g_variant_builder_add(&props, "{sv}", "visible", g_variant_new_boolean(TRUE));
+                break;
+            case MENU_ID_STATUS: {
+                const char *st = tray->locked ? "Locked" : "Unlocked";
+                g_variant_builder_add(&props, "{sv}", "label", g_variant_new_string(st));
+                g_variant_builder_add(&props, "{sv}", "enabled", g_variant_new_boolean(FALSE));
+                g_variant_builder_add(&props, "{sv}", "visible", g_variant_new_boolean(TRUE));
+                break;
+            }
+            case MENU_ID_LOCK: {
+                const char *ll = tray->locked ? "Unlock" : "Lock";
+                g_variant_builder_add(&props, "{sv}", "label", g_variant_new_string(ll));
+                g_variant_builder_add(&props, "{sv}", "enabled", g_variant_new_boolean(TRUE));
+                g_variant_builder_add(&props, "{sv}", "visible", g_variant_new_boolean(TRUE));
+                break;
+            }
+            case MENU_ID_MANAGE:
+                g_variant_builder_add(&props, "{sv}", "label", g_variant_new_string("Manage Vault"));
+                g_variant_builder_add(&props, "{sv}", "enabled", g_variant_new_boolean(TRUE));
+                g_variant_builder_add(&props, "{sv}", "visible", g_variant_new_boolean(TRUE));
+                break;
+            case MENU_ID_QUIT:
+                g_variant_builder_add(&props, "{sv}", "label", g_variant_new_string("Quit"));
+                g_variant_builder_add(&props, "{sv}", "enabled", g_variant_new_boolean(TRUE));
+                g_variant_builder_add(&props, "{sv}", "visible", g_variant_new_boolean(TRUE));
+                break;
+            default:
+                break;
+            }
+
+            g_variant_builder_add(&result, "(ia{sv})", req_id, &props);
+        }
+        g_variant_iter_free(id_iter);
+
         g_dbus_method_invocation_return_value(invocation,
-            g_variant_new("(a(ia{sv}))", &b));
+            g_variant_new("(a(ia{sv}))", &result));
     } else if (g_strcmp0(method, "GetProperty") == 0) {
+        gint32 prop_id;
+        const char *prop_name;
+        g_variant_get(params, "(is)", &prop_id, &prop_name);
+
+        GVariant *val = NULL;
+        if (g_strcmp0(prop_name, "label") == 0) {
+            switch (prop_id) {
+            case MENU_ID_SHOW: val = g_variant_new_string("Show Vault"); break;
+            case MENU_ID_STATUS: val = g_variant_new_string(tray->locked ? "Locked" : "Unlocked"); break;
+            case MENU_ID_LOCK: val = g_variant_new_string(tray->locked ? "Unlock" : "Lock"); break;
+            case MENU_ID_MANAGE: val = g_variant_new_string("Manage Vault"); break;
+            case MENU_ID_QUIT: val = g_variant_new_string("Quit"); break;
+            default: val = g_variant_new_string(""); break;
+            }
+        } else if (g_strcmp0(prop_name, "enabled") == 0) {
+            val = g_variant_new_boolean(prop_id != MENU_ID_STATUS);
+        } else if (g_strcmp0(prop_name, "visible") == 0) {
+            val = g_variant_new_boolean(TRUE);
+        } else if (g_strcmp0(prop_name, "type") == 0) {
+            if (prop_id == MENU_ID_SEP1 || prop_id == MENU_ID_SEP2)
+                val = g_variant_new_string("separator");
+            else
+                val = g_variant_new_string("");
+        } else {
+            val = g_variant_new_string("");
+        }
         g_dbus_method_invocation_return_value(invocation,
-            g_variant_new("(v)", g_variant_new_string("")));
+            g_variant_new("(v)", val));
     } else {
         g_dbus_method_invocation_return_dbus_error(invocation,
             "org.freedesktop.DBus.Error.UnknownMethod", "Unknown method");

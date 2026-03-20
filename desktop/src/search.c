@@ -301,7 +301,7 @@ static void refresh_entries(SearchData *sd)
         gtk_box_append(GTK_BOX(row_box), text_box);
 
         if (has_totp) {
-            GtkWidget *totp_indicator = gtk_label_new("\xe2\x97\x8f");
+            GtkWidget *totp_indicator = gtk_label_new("\xf0\x9f\x94\x91");
             gtk_widget_add_css_class(totp_indicator, "totp-indicator");
             gtk_widget_set_valign(totp_indicator, GTK_ALIGN_CENTER);
             gtk_box_append(GTK_BOX(row_box), totp_indicator);
@@ -346,8 +346,9 @@ GtkWidget *solock_search_view_new(SolockApp *app)
 
     GtkWidget *scroll = gtk_scrolled_window_new();
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
-    gtk_scrolled_window_set_max_content_height(GTK_SCROLLED_WINDOW(scroll), 380);
+    gtk_scrolled_window_set_max_content_height(GTK_SCROLLED_WINDOW(scroll), 320);
     gtk_scrolled_window_set_propagate_natural_height(GTK_SCROLLED_WINDOW(scroll), TRUE);
+    gtk_widget_set_size_request(scroll, 300, -1);
 
     GtkWidget *list_box = gtk_list_box_new();
     gtk_list_box_set_selection_mode(GTK_LIST_BOX(list_box), GTK_SELECTION_SINGLE);

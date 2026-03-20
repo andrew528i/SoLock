@@ -1,139 +1,138 @@
 .popup-window {
-    background-color: rgba(45, 53, 59, 0.95);
-    border-radius: 14px;
-    border: 1px solid rgba(127, 187, 179, 0.1);
+    background-color: rgba(40, 48, 54, 0.96);
+    border-radius: 12px;
+    border: 1px solid rgba(127, 187, 179, 0.08);
 }
 
 .search-input {
-    background: rgba(52, 63, 68, 0.6);
+    background: rgba(55, 65, 73, 0.5);
     border-radius: 8px;
-    padding: 6px 10px;
+    border: none;
+    padding: 5px 8px;
     font-size: 13px;
-    border: 1px solid rgba(79, 88, 94, 0.25);
+    color: rgba(211, 198, 170, 0.9);
+    caret-color: rgba(127, 187, 179, 0.8);
 }
 
 .search-input:focus {
-    background: rgba(52, 63, 68, 0.8);
-    border-color: rgba(127, 187, 179, 0.35);
+    background: rgba(55, 65, 73, 0.7);
 }
 
 .entry-list {
     background: transparent;
+    padding: 4px 0;
 }
 
 .entry-list row {
     border-radius: 8px;
-    margin: 1px 4px;
+    margin: 0 6px;
     padding: 0;
-    transition: background-color 150ms ease;
+    transition: background-color 100ms ease;
 }
 
 .entry-list row:hover {
-    background-color: rgba(127, 187, 179, 0.06);
+    background-color: rgba(127, 187, 179, 0.05);
 }
 
 .entry-list row:selected {
-    background-color: rgba(127, 187, 179, 0.1);
+    background-color: rgba(127, 187, 179, 0.09);
 }
 
 .entry-name {
     font-weight: 500;
     font-size: 13px;
-    color: rgba(211, 198, 170, 0.92);
+    color: rgba(211, 198, 170, 0.88);
 }
 
 .entry-subtitle {
     font-size: 11px;
-    color: rgba(157, 169, 160, 0.55);
+    color: rgba(157, 169, 160, 0.5);
 }
 
 .entry-icon {
-    color: rgba(157, 169, 160, 0.4);
+    color: rgba(157, 169, 160, 0.35);
 }
 
 .totp-indicator {
-    color: rgba(127, 187, 179, 0.7);
-    font-size: 7px;
+    font-size: 14px;
 }
 
 .label-hint {
     font-weight: 600;
     font-size: 10px;
-    color: @accent_color;
-    background: rgba(127, 187, 179, 0.12);
+    color: rgba(127, 187, 179, 0.9);
+    background: rgba(127, 187, 179, 0.1);
     border-radius: 3px;
-    min-width: 16px;
-    min-height: 16px;
+    min-width: 15px;
+    min-height: 15px;
     padding: 0 3px;
 }
 
-.detail-title {
+.detail-name {
     font-weight: 500;
-    font-size: 16px;
-    color: rgba(211, 198, 170, 0.92);
+    font-size: 14px;
+    color: rgba(211, 198, 170, 0.9);
 }
 
-.detail-type {
-    font-size: 11px;
-    color: rgba(157, 169, 160, 0.5);
+.detail-meta {
+    font-size: 10px;
+    color: rgba(157, 169, 160, 0.4);
 }
 
 .detail-field-row {
     border-radius: 8px;
-    padding: 8px 10px;
+    padding: 7px 10px;
     margin: 1px 0;
-    transition: background-color 150ms ease;
+    transition: background-color 100ms ease;
 }
 
 .detail-field-row:hover {
-    background-color: rgba(52, 63, 68, 0.5);
+    background-color: rgba(55, 65, 73, 0.5);
 }
 
 .detail-field-label {
     font-size: 10px;
     font-weight: 500;
-    color: rgba(157, 169, 160, 0.5);
-    letter-spacing: 0.3px;
+    color: rgba(157, 169, 160, 0.45);
 }
 
 .detail-field-value {
     font-size: 13px;
     color: rgba(211, 198, 170, 0.85);
-    margin-top: 1px;
 }
 
 .totp-section {
-    background: rgba(127, 187, 179, 0.05);
-    border-radius: 10px;
-    padding: 10px 14px;
-    transition: background-color 150ms ease;
+    background: rgba(127, 187, 179, 0.04);
+    border-radius: 8px;
+    padding: 8px 10px;
+    transition: background-color 100ms ease;
 }
 
 .totp-section:hover {
-    background: rgba(127, 187, 179, 0.08);
+    background: rgba(127, 187, 179, 0.07);
 }
 
 .totp-code {
     font-family: monospace;
-    font-size: 24px;
+    font-size: 22px;
     font-weight: 600;
-    letter-spacing: 3px;
-    color: rgba(211, 198, 170, 0.92);
+    letter-spacing: 2px;
+    color: rgba(211, 198, 170, 0.9);
 }
 
 .totp-remaining {
-    font-size: 11px;
-    color: rgba(157, 169, 160, 0.45);
+    font-size: 10px;
+    color: rgba(157, 169, 160, 0.4);
 }
 
 .totp-progress trough {
     min-height: 2px;
     border-radius: 1px;
-    background: rgba(79, 88, 94, 0.2);
+    background: rgba(79, 88, 94, 0.3);
 }
 
 .totp-progress trough block.filled {
-    background-color: @accent_color;
+    background-color: rgba(127, 187, 179, 0.7);
     border-radius: 1px;
 }
 
@@ -142,26 +141,26 @@
 }
 
 .copied-feedback {
-    color: @accent_color;
-    font-weight: 500;
+    color: rgba(127, 187, 179, 0.8);
+    font-size: 10px;
 }
 
 .unlock-icon {
-    color: rgba(127, 187, 179, 0.5);
+    color: rgba(127, 187, 179, 0.4);
 }
 
 .unlock-title {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 400;
-    color: rgba(211, 198, 170, 0.7);
+    color: rgba(211, 198, 170, 0.6);
 }
 
 levelbar trough block.filled {
-    background-color: @accent_color;
+    background-color: rgba(127, 187, 179, 0.7);
     border-radius: 1px;
 }
 
 levelbar trough block.empty {
-    background-color: rgba(79, 88, 94, 0.15);
+    background-color: rgba(79, 88, 94, 0.2);
     border-radius: 1px;
 }

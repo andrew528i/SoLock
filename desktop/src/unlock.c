@@ -52,16 +52,16 @@ static void on_view_map(GtkWidget *widget, gpointer data)
 
 GtkWidget *solock_unlock_view_new(SolockApp *app)
 {
-    GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 12);
+    GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
     gtk_widget_set_halign(box, GTK_ALIGN_CENTER);
     gtk_widget_set_valign(box, GTK_ALIGN_CENTER);
-    gtk_widget_set_margin_start(box, 32);
-    gtk_widget_set_margin_end(box, 32);
-    gtk_widget_set_margin_top(box, 28);
-    gtk_widget_set_margin_bottom(box, 28);
+    gtk_widget_set_margin_start(box, 40);
+    gtk_widget_set_margin_end(box, 40);
+    gtk_widget_set_margin_top(box, 20);
+    gtk_widget_set_margin_bottom(box, 20);
 
     GtkWidget *icon = gtk_image_new_from_icon_name("system-lock-screen-symbolic");
-    gtk_image_set_pixel_size(GTK_IMAGE(icon), 36);
+    gtk_image_set_pixel_size(GTK_IMAGE(icon), 28);
     gtk_widget_add_css_class(icon, "unlock-icon");
     gtk_box_append(GTK_BOX(box), icon);
 
@@ -71,7 +71,7 @@ GtkWidget *solock_unlock_view_new(SolockApp *app)
 
     GtkWidget *entry = gtk_password_entry_new();
     gtk_password_entry_set_show_peek_icon(GTK_PASSWORD_ENTRY(entry), TRUE);
-    gtk_widget_set_size_request(entry, 260, -1);
+    gtk_widget_set_size_request(entry, 220, -1);
     gtk_box_append(GTK_BOX(box), entry);
 
     GtkWidget *spinner = gtk_spinner_new();
