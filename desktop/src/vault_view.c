@@ -404,6 +404,8 @@ static void vault_show_detail(VaultData *vd, JsonObject *obj)
     }
 
     GtkWidget *group = adw_preferences_group_new();
+    gtk_widget_set_margin_start(group, 4);
+    gtk_widget_set_margin_end(group, 4);
 
     GList *members = json_object_get_members(fields);
     for (GList *l = members; l; l = l->next) {
@@ -418,6 +420,8 @@ static void vault_show_detail(VaultData *vd, JsonObject *obj)
         adw_preferences_row_set_title(ADW_PREFERENCES_ROW(row), human_label(key));
         gtk_widget_set_margin_top(row, 4);
         gtk_widget_set_margin_bottom(row, 4);
+        gtk_widget_set_margin_start(row, 4);
+        gtk_widget_set_margin_end(row, 4);
 
         if (is_sensitive_field(key)) {
             adw_action_row_set_subtitle(ADW_ACTION_ROW(row),
@@ -447,6 +451,8 @@ static void vault_show_detail(VaultData *vd, JsonObject *obj)
         GtkWidget *totp_group = adw_preferences_group_new();
         adw_preferences_group_set_title(ADW_PREFERENCES_GROUP(totp_group), "One-Time Password");
         gtk_widget_set_margin_top(totp_group, 12);
+        gtk_widget_set_margin_start(totp_group, 4);
+        gtk_widget_set_margin_end(totp_group, 4);
 
         GtkWidget *totp_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
         gtk_widget_set_margin_start(totp_box, 12);

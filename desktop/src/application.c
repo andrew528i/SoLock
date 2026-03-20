@@ -76,12 +76,16 @@ static void solock_app_startup(GApplication *gapp)
         SOLOCK_DATA_DIR "/style.css",
         NULL
     };
+    gboolean css_loaded = FALSE;
     for (const char **p = css_paths; *p; p++) {
         if (g_file_test(*p, G_FILE_TEST_EXISTS)) {
             gtk_css_provider_load_from_path(css, *p);
+            css_loaded = TRUE;
             break;
         }
     }
+    if (!css_loaded)
+        g_message("CSS file not found at any expected path");
     gtk_style_context_add_provider_for_display(
         gdk_display_get_default(),
         GTK_STYLE_PROVIDER(css),

@@ -240,6 +240,8 @@ GtkWidget *solock_dashboard_view_new(SolockApp *app)
     gtk_box_append(GTK_BOX(box), make_section_label("\xf0\x9f\x91\xa4 Account"));
 
     GtkWidget *account_group = adw_preferences_group_new();
+    gtk_widget_set_margin_start(account_group, 8);
+    gtk_widget_set_margin_end(account_group, 8);
 
     dd->deployer_row = make_action_row("Deployer Address", "-");
     GtkWidget *deployer_copy = gtk_button_new_from_icon_name("edit-copy-symbolic");
@@ -266,6 +268,8 @@ GtkWidget *solock_dashboard_view_new(SolockApp *app)
     gtk_box_append(GTK_BOX(box), make_section_label("\xf0\x9f\x93\xa1 Status"));
 
     GtkWidget *status_group = adw_preferences_group_new();
+    gtk_widget_set_margin_start(status_group, 8);
+    gtk_widget_set_margin_end(status_group, 8);
 
     dd->program_status_row = make_action_row("Program", "-");
     adw_preferences_group_add(ADW_PREFERENCES_GROUP(status_group), dd->program_status_row);
@@ -279,6 +283,8 @@ GtkWidget *solock_dashboard_view_new(SolockApp *app)
     gtk_box_append(GTK_BOX(box), make_section_label("\xf0\x9f\x93\xa6 Entries"));
 
     GtkWidget *entries_group = adw_preferences_group_new();
+    gtk_widget_set_margin_start(entries_group, 8);
+    gtk_widget_set_margin_end(entries_group, 8);
 
     dd->entries_row = make_action_row("Total", "-");
     adw_preferences_group_add(ADW_PREFERENCES_GROUP(entries_group), dd->entries_row);
@@ -304,6 +310,8 @@ GtkWidget *solock_dashboard_view_new(SolockApp *app)
     gtk_box_append(GTK_BOX(box), make_section_label("\xf0\x9f\x94\x84 Sync"));
 
     GtkWidget *sync_group = adw_preferences_group_new();
+    gtk_widget_set_margin_start(sync_group, 8);
+    gtk_widget_set_margin_end(sync_group, 8);
 
     dd->sync_row = make_action_row("Last Sync", "-");
     adw_preferences_group_add(ADW_PREFERENCES_GROUP(sync_group), dd->sync_row);
