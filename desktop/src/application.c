@@ -19,8 +19,16 @@ static void on_activate(GApplication *gapp)
 {
     SolockApp *app = (SolockApp *)gapp;
 
+    AdwStyleManager *style = adw_style_manager_get_default();
+    adw_style_manager_set_color_scheme(style, ADW_COLOR_SCHEME_PREFER_DARK);
+
+    if (app->popup) {
+        solock_popup_show(app->popup);
+        return;
+    }
+
     if (!solock_wtype_available()) {
-        g_warning("wtype not found. Auto-paste will use clipboard fallback.");
+        g_message("wtype not found, auto-paste will use clipboard fallback");
     }
 
     GError *error = NULL;
@@ -33,6 +41,7 @@ static void on_activate(GApplication *gapp)
     solock_tray_setup(app);
 
     app->popup = solock_popup_new(app);
+    solock_popup_show(app->popup);
 }
 
 static gboolean on_expiry_check(gpointer data)
@@ -94,7 +103,6 @@ static void solock_app_init(SolockApp *app)
 
 static void solock_app_class_init(SolockAppClass *klass)
 {
-    (void)klass;
     GApplicationClass *app_class = G_APPLICATION_CLASS(klass);
     app_class->activate = on_activate;
     app_class->startup = solock_app_startup;
