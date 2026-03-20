@@ -19,13 +19,13 @@ GtkWidget *solock_main_window_new(SolockApp *app)
     gtk_window_set_title(GTK_WINDOW(win), "SoLock");
     gtk_window_set_default_size(GTK_WINDOW(win), 900, 600);
 
-    GtkWidget *split = adw_navigation_split_view_new();
+    AdwNavigationSplitView *split = ADW_NAVIGATION_SPLIT_VIEW(adw_navigation_split_view_new());
 
     /* sidebar */
     GtkWidget *sidebar_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     GtkWidget *sidebar_header = adw_header_bar_new();
     adw_header_bar_set_title_widget(ADW_HEADER_BAR(sidebar_header),
-                                     adw_window_title_new("SoLock", ""));
+                                     GTK_WIDGET(adw_window_title_new("SoLock", "")));
     gtk_box_append(GTK_BOX(sidebar_box), sidebar_header);
 
     GtkWidget *sidebar_list = gtk_list_box_new();
@@ -44,8 +44,8 @@ GtkWidget *solock_main_window_new(SolockApp *app)
     }
     gtk_box_append(GTK_BOX(sidebar_box), sidebar_list);
 
-    GtkWidget *sidebar_page = adw_navigation_page_new(sidebar_box, "Navigation");
-    adw_navigation_split_view_set_sidebar(ADW_NAVIGATION_SPLIT_VIEW(split), sidebar_page);
+    AdwNavigationPage *sidebar_page = adw_navigation_page_new(sidebar_box, "Navigation");
+    adw_navigation_split_view_set_sidebar(split, sidebar_page);
 
     /* content stack */
     GtkWidget *content_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
@@ -66,13 +66,13 @@ GtkWidget *solock_main_window_new(SolockApp *app)
 
     gtk_box_append(GTK_BOX(content_box), content_stack);
 
-    GtkWidget *content_page = adw_navigation_page_new(content_box, "Content");
-    adw_navigation_split_view_set_content(ADW_NAVIGATION_SPLIT_VIEW(split), content_page);
+    AdwNavigationPage *content_page = adw_navigation_page_new(content_box, "Content");
+    adw_navigation_split_view_set_content(split, content_page);
 
     g_signal_connect(sidebar_list, "row-selected",
                      G_CALLBACK(on_sidebar_row_selected), content_stack);
 
-    adw_application_window_set_content(ADW_APPLICATION_WINDOW(win), split);
+    adw_application_window_set_content(ADW_APPLICATION_WINDOW(win), GTK_WIDGET(split));
 
     return win;
 }

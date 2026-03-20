@@ -2,6 +2,7 @@
 #include <gio/gunixsocketaddress.h>
 #include <string.h>
 #include <signal.h>
+#include <unistd.h>
 
 struct _SolockClient {
     char    *sock_path;

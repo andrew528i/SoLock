@@ -9,6 +9,10 @@ struct _SolockApp {
     guint           expiry_timer;
 };
 
+typedef struct _SolockAppClass {
+    AdwApplicationClass parent_class;
+} SolockAppClass;
+
 G_DEFINE_TYPE(SolockApp, solock_app, ADW_TYPE_APPLICATION)
 
 static void on_activate(GApplication *gapp)
