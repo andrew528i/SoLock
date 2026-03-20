@@ -3,8 +3,6 @@ project('solock-desktop', 'c',
   default_options: ['warning_level=2', 'c_std=c17'],
 )
 
-gnome = import('gnome')
-
 gtk4 = dependency('gtk4', version: '>= 4.10')
 adw = dependency('libadwaita-1', version: '>= 1.4')
 layer_shell = dependency('gtk4-layer-shell-0', required: true)
