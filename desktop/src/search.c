@@ -30,18 +30,21 @@ static const char *icon_for_type(const char *type)
 
 static void update_label_hints(SearchData *sd)
 {
-    int idx = 0;
     for (GtkWidget *row = gtk_widget_get_first_child(sd->list_box);
          row != NULL;
-         row = gtk_widget_get_next_sibling(row), idx++) {
+         row = gtk_widget_get_next_sibling(row)) {
 
         GtkWidget *row_content = gtk_list_box_row_get_child(GTK_LIST_BOX_ROW(row));
         if (!row_content) continue;
 
-        GtkWidget *hint_revealer = gtk_widget_get_first_child(row_content);
-        if (!hint_revealer || !GTK_IS_REVEALER(hint_revealer)) continue;
-
-        gtk_revealer_set_reveal_child(GTK_REVEALER(hint_revealer), sd->label_mode);
+        for (GtkWidget *child = gtk_widget_get_first_child(row_content);
+             child != NULL;
+             child = gtk_widget_get_next_sibling(child)) {
+            if (GTK_IS_REVEALER(child)) {
+                gtk_revealer_set_reveal_child(GTK_REVEALER(child), sd->label_mode);
+                break;
+            }
+        }
     }
 }
 
@@ -287,9 +290,17 @@ static void refresh_entries(SearchData *sd)
         gtk_widget_set_margin_bottom(row_box, 4);
         gtk_widget_set_size_request(row_box, -1, 48);
 
+        GtkWidget *icon = gtk_image_new_from_icon_name(icon_for_type(type));
+        gtk_image_set_pixel_size(GTK_IMAGE(icon), 18);
+        gtk_widget_add_css_class(icon, "entry-icon");
+        gtk_widget_set_valign(icon, GTK_ALIGN_CENTER);
+        gtk_widget_set_margin_start(icon, 11);
+        gtk_widget_set_margin_end(icon, 8);
+        gtk_box_append(GTK_BOX(row_box), icon);
+
         char lbl_char = label_char_for_index(i);
         GtkWidget *hint_revealer = gtk_revealer_new();
-        gtk_revealer_set_transition_type(GTK_REVEALER(hint_revealer), GTK_REVEALER_TRANSITION_TYPE_CROSSFADE);
+        gtk_revealer_set_transition_type(GTK_REVEALER(hint_revealer), GTK_REVEALER_TRANSITION_TYPE_SLIDE_RIGHT);
         gtk_revealer_set_transition_duration(GTK_REVEALER(hint_revealer), 100);
         gtk_revealer_set_reveal_child(GTK_REVEALER(hint_revealer), FALSE);
         if (lbl_char) {
@@ -299,14 +310,6 @@ static void refresh_entries(SearchData *sd)
             gtk_revealer_set_child(GTK_REVEALER(hint_revealer), hint);
         }
         gtk_box_append(GTK_BOX(row_box), hint_revealer);
-
-        GtkWidget *icon = gtk_image_new_from_icon_name(icon_for_type(type));
-        gtk_image_set_pixel_size(GTK_IMAGE(icon), 18);
-        gtk_widget_add_css_class(icon, "entry-icon");
-        gtk_widget_set_valign(icon, GTK_ALIGN_CENTER);
-        gtk_widget_set_margin_start(icon, 11);
-        gtk_widget_set_margin_end(icon, 8);
-        gtk_box_append(GTK_BOX(row_box), icon);
 
         GtkWidget *text_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
         gtk_widget_set_hexpand(text_box, TRUE);
