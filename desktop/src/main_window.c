@@ -9,7 +9,7 @@ typedef struct {
 
 static const char *section_names[] = { "vault", "dashboard", "settings" };
 static const char *section_titles[] = { "Vault", "Dashboard", "Settings" };
-static const char *sidebar_labels[] = { "\xf0\x9f\x94\x90 Vault", "\xf0\x9f\x93\x8a Dashboard", "\xe2\x9a\x99 Settings" };
+static const char *sidebar_icon_names[] = { "dialog-password-symbolic", "utilities-system-monitor-symbolic", "preferences-system-symbolic" };
 
 static void on_sidebar_row_selected(GtkListBox *list, GtkListBoxRow *row, gpointer data)
 {
@@ -21,18 +21,13 @@ static void on_sidebar_row_selected(GtkListBox *list, GtkListBoxRow *row, gpoint
         gtk_stack_set_visible_child_name(mwd->stack, section_names[idx]);
         adw_window_title_set_title(ADW_WINDOW_TITLE(mwd->content_title),
                                    section_titles[idx]);
+    } else if (idx == 3) {
+        GApplication *gapp = G_APPLICATION(gtk_window_get_application(mwd->window));
+        if (gapp)
+            g_application_quit(gapp);
+        else
+            gtk_window_close(mwd->window);
     }
-}
-
-static void on_quit_row_activated(GtkListBox *list, GtkListBoxRow *row, gpointer data)
-{
-    (void)list; (void)row;
-    MainWindowData *mwd = data;
-    GApplication *gapp = G_APPLICATION(gtk_window_get_application(mwd->window));
-    if (gapp)
-        g_application_quit(gapp);
-    else
-        gtk_window_close(mwd->window);
 }
 
 GtkWidget *solock_main_window_new(SolockApp *app)
@@ -45,6 +40,7 @@ GtkWidget *solock_main_window_new(SolockApp *app)
 
     /* sidebar */
     GtkWidget *sidebar_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    gtk_widget_add_css_class(sidebar_box, "navigation-sidebar");
     GtkWidget *sidebar_header = adw_header_bar_new();
     adw_header_bar_set_title_widget(ADW_HEADER_BAR(sidebar_header),
                                      GTK_WIDGET(adw_window_title_new("SoLock", "")));
@@ -53,28 +49,27 @@ GtkWidget *solock_main_window_new(SolockApp *app)
     GtkWidget *sidebar_list = gtk_list_box_new();
     gtk_widget_add_css_class(sidebar_list, "navigation-sidebar");
     gtk_list_box_set_selection_mode(GTK_LIST_BOX(sidebar_list), GTK_SELECTION_SINGLE);
-    gtk_widget_set_vexpand(sidebar_list, FALSE);
+    gtk_widget_set_vexpand(sidebar_list, TRUE);
 
     for (int i = 0; i < 3; i++) {
-        GtkWidget *label = gtk_label_new(sidebar_labels[i]);
+        GtkWidget *row_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+        gtk_widget_set_margin_start(row_box, 14);
+        gtk_widget_set_margin_end(row_box, 14);
+        gtk_widget_set_margin_top(row_box, 10);
+        gtk_widget_set_margin_bottom(row_box, 10);
+
+        GtkWidget *img = gtk_image_new_from_icon_name(sidebar_icon_names[i]);
+        gtk_image_set_pixel_size(GTK_IMAGE(img), 16);
+        gtk_box_append(GTK_BOX(row_box), img);
+
+        GtkWidget *label = gtk_label_new(section_titles[i]);
         gtk_label_set_xalign(GTK_LABEL(label), 0);
-        gtk_widget_set_margin_start(label, 14);
-        gtk_widget_set_margin_end(label, 14);
-        gtk_widget_set_margin_top(label, 10);
-        gtk_widget_set_margin_bottom(label, 10);
-        gtk_list_box_append(GTK_LIST_BOX(sidebar_list), label);
+        gtk_box_append(GTK_BOX(row_box), label);
+
+        gtk_list_box_append(GTK_LIST_BOX(sidebar_list), row_box);
     }
-    gtk_box_append(GTK_BOX(sidebar_box), sidebar_list);
 
-    GtkWidget *spacer = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-    gtk_widget_set_vexpand(spacer, TRUE);
-    gtk_box_append(GTK_BOX(sidebar_box), spacer);
-
-    GtkWidget *quit_list = gtk_list_box_new();
-    gtk_widget_add_css_class(quit_list, "navigation-sidebar");
-    gtk_list_box_set_selection_mode(GTK_LIST_BOX(quit_list), GTK_SELECTION_NONE);
-    gtk_widget_set_margin_bottom(quit_list, 8);
-
+    /* quit row at the end */
     GtkWidget *quit_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
     gtk_widget_set_margin_start(quit_row, 14);
     gtk_widget_set_margin_end(quit_row, 14);
@@ -86,8 +81,9 @@ GtkWidget *solock_main_window_new(SolockApp *app)
     GtkWidget *quit_text = gtk_label_new("Quit");
     gtk_label_set_xalign(GTK_LABEL(quit_text), 0);
     gtk_box_append(GTK_BOX(quit_row), quit_text);
-    gtk_list_box_append(GTK_LIST_BOX(quit_list), quit_row);
-    gtk_box_append(GTK_BOX(sidebar_box), quit_list);
+    gtk_list_box_append(GTK_LIST_BOX(sidebar_list), quit_row);
+
+    gtk_box_append(GTK_BOX(sidebar_box), sidebar_list);
 
     AdwNavigationPage *sidebar_page = adw_navigation_page_new(sidebar_box, "Navigation");
     adw_navigation_split_view_set_sidebar(split, sidebar_page);
@@ -125,8 +121,6 @@ GtkWidget *solock_main_window_new(SolockApp *app)
 
     g_signal_connect(sidebar_list, "row-selected",
                      G_CALLBACK(on_sidebar_row_selected), mwd);
-    g_signal_connect(quit_list, "row-activated",
-                     G_CALLBACK(on_quit_row_activated), mwd);
 
     GtkListBoxRow *first = gtk_list_box_get_row_at_index(GTK_LIST_BOX(sidebar_list), 0);
     if (first)

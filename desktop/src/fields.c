@@ -22,7 +22,7 @@ typedef struct {
     guint      totp_timer;
     GtkWidget *totp_code_label;
     GtkWidget *totp_bar;
-    GtkWidget *totp_hint_revealer;
+    GtkWidget *totp_hint_label;
     GtkWidget *box;
     GtkWidget *fields_box;
     gboolean   label_mode;
@@ -237,7 +237,7 @@ static gboolean update_totp(gpointer data)
     gtk_widget_remove_css_class(dd->totp_bar, "totp-danger");
     if (remaining >= 10)
         gtk_widget_add_css_class(dd->totp_bar, "totp-ok");
-    else if (remaining >= 4)
+    else if (remaining >= 5)
         gtk_widget_add_css_class(dd->totp_bar, "totp-warn");
     else
         gtk_widget_add_css_class(dd->totp_bar, "totp-danger");
@@ -382,12 +382,10 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
 
             GtkWidget *totp_header_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
 
-            GtkWidget *totp_hint_revealer = gtk_revealer_new();
-            gtk_revealer_set_transition_type(GTK_REVEALER(totp_hint_revealer), GTK_REVEALER_TRANSITION_TYPE_CROSSFADE);
-            gtk_revealer_set_transition_duration(GTK_REVEALER(totp_hint_revealer), 100);
-            gtk_revealer_set_reveal_child(GTK_REVEALER(totp_hint_revealer), FALSE);
-            gtk_widget_set_hexpand(totp_hint_revealer, FALSE);
-            gtk_box_append(GTK_BOX(totp_header_box), totp_hint_revealer);
+            GtkWidget *totp_hint_label = gtk_label_new(NULL);
+            gtk_widget_add_css_class(totp_hint_label, "label-hint");
+            gtk_widget_set_visible(totp_hint_label, FALSE);
+            gtk_box_append(GTK_BOX(totp_header_box), totp_hint_label);
 
             GtkWidget *totp_header = gtk_label_new("One-Time Password");
             gtk_widget_add_css_class(totp_header, "dim-label");
@@ -424,7 +422,7 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
 
             dd->totp_code_label = totp_code;
             dd->totp_bar = totp_bar;
-            dd->totp_hint_revealer = totp_hint_revealer;
+            dd->totp_hint_label = totp_hint_label;
 
             GtkWidget *sep2 = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
             gtk_widget_set_margin_bottom(sep2, 8);
@@ -442,11 +440,9 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
     dd->fields = g_new0(FieldInfo, field_count);
     dd->field_count = field_count;
 
-    if (dd->totp_hint_revealer && field_count < LABEL_CHARS_LEN) {
+    if (dd->totp_hint_label && field_count < LABEL_CHARS_LEN) {
         char lbl_str[2] = { LABEL_CHARS[field_count], '\0' };
-        GtkWidget *hint = gtk_label_new(lbl_str);
-        gtk_widget_add_css_class(hint, "label-hint");
-        gtk_revealer_set_child(GTK_REVEALER(dd->totp_hint_revealer), hint);
+        gtk_label_set_text(GTK_LABEL(dd->totp_hint_label), lbl_str);
     }
 
     GtkWidget *fields_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
@@ -471,18 +467,14 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
 
         GtkWidget *row_header = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
 
-        GtkWidget *hint_revealer = gtk_revealer_new();
-        gtk_revealer_set_transition_type(GTK_REVEALER(hint_revealer), GTK_REVEALER_TRANSITION_TYPE_CROSSFADE);
-        gtk_revealer_set_transition_duration(GTK_REVEALER(hint_revealer), 100);
-        gtk_revealer_set_reveal_child(GTK_REVEALER(hint_revealer), FALSE);
-        gtk_widget_set_hexpand(hint_revealer, FALSE);
+        GtkWidget *hint_label = NULL;
         if (idx < LABEL_CHARS_LEN) {
             char lbl_str[2] = { LABEL_CHARS[idx], '\0' };
-            GtkWidget *hint = gtk_label_new(lbl_str);
-            gtk_widget_add_css_class(hint, "label-hint");
-            gtk_revealer_set_child(GTK_REVEALER(hint_revealer), hint);
+            hint_label = gtk_label_new(lbl_str);
+            gtk_widget_add_css_class(hint_label, "label-hint");
+            gtk_widget_set_visible(hint_label, FALSE);
+            gtk_box_append(GTK_BOX(row_header), hint_label);
         }
-        gtk_box_append(GTK_BOX(row_header), hint_revealer);
 
         GtkWidget *field_label = gtk_label_new(human_label(key));
         gtk_widget_add_css_class(field_label, "detail-field-label");
@@ -557,12 +549,13 @@ static void update_label_hints(DetailData *dd)
         GtkWidget *row_header = gtk_widget_get_first_child(row);
         if (!row_header) continue;
 
-        GtkWidget *hint_revealer = gtk_widget_get_first_child(row_header);
-        if (hint_revealer && GTK_IS_REVEALER(hint_revealer)) {
-            gtk_revealer_set_reveal_child(GTK_REVEALER(hint_revealer), dd->label_mode);
+        GtkWidget *hint = gtk_widget_get_first_child(row_header);
+        if (hint && GTK_IS_LABEL(hint) &&
+            gtk_widget_has_css_class(hint, "label-hint")) {
+            gtk_widget_set_visible(hint, dd->label_mode);
         }
     }
 
-    if (dd->totp_hint_revealer)
-        gtk_revealer_set_reveal_child(GTK_REVEALER(dd->totp_hint_revealer), dd->label_mode);
+    if (dd->totp_hint_label)
+        gtk_widget_set_visible(dd->totp_hint_label, dd->label_mode);
 }

@@ -106,6 +106,10 @@
     background-color: rgba(52, 62, 70, 0.6);
 }
 
+.detail-field-row + .detail-field-row {
+    border-top: 1px solid rgba(79, 88, 94, 0.15);
+}
+
 .detail-field-label {
     font-size: 10px;
     font-weight: 500;

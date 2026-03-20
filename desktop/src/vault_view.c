@@ -424,7 +424,7 @@ static gboolean vault_update_totp(gpointer data)
         gtk_widget_remove_css_class(vd->detail_totp_bar, "totp-danger");
         if (remaining >= 10)
             gtk_widget_add_css_class(vd->detail_totp_bar, "totp-ok");
-        else if (remaining >= 4)
+        else if (remaining >= 5)
             gtk_widget_add_css_class(vd->detail_totp_bar, "totp-warn");
         else
             gtk_widget_add_css_class(vd->detail_totp_bar, "totp-danger");
@@ -1067,9 +1067,9 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
     /* empty state - summary */
     vd->detail_empty = gtk_box_new(GTK_ORIENTATION_VERTICAL, 12);
     gtk_widget_set_valign(vd->detail_empty, GTK_ALIGN_START);
-    gtk_widget_set_halign(vd->detail_empty, GTK_ALIGN_CENTER);
-    gtk_widget_set_margin_start(vd->detail_empty, 24);
-    gtk_widget_set_margin_end(vd->detail_empty, 24);
+    gtk_widget_set_halign(vd->detail_empty, GTK_ALIGN_FILL);
+    gtk_widget_set_margin_start(vd->detail_empty, 16);
+    gtk_widget_set_margin_end(vd->detail_empty, 16);
     gtk_widget_set_margin_top(vd->detail_empty, 24);
 
     GtkWidget *empty_icon = gtk_image_new_from_icon_name("dialog-password-symbolic");
@@ -1079,8 +1079,8 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
 
     GtkWidget *stats_group = adw_preferences_group_new();
     adw_preferences_group_set_title(ADW_PREFERENCES_GROUP(stats_group), "Summary");
-    gtk_widget_set_margin_start(stats_group, 12);
-    gtk_widget_set_margin_end(stats_group, 12);
+    gtk_widget_set_margin_start(stats_group, 0);
+    gtk_widget_set_margin_end(stats_group, 0);
     gtk_widget_set_margin_top(stats_group, 12);
     gtk_widget_set_margin_bottom(stats_group, 12);
 

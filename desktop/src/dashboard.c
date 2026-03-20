@@ -184,7 +184,7 @@ static GtkWidget *make_section_label(const char *text)
     gtk_label_set_xalign(GTK_LABEL(label), 0);
     gtk_widget_set_margin_start(label, 4);
     gtk_widget_set_margin_top(label, 16);
-    gtk_widget_set_margin_bottom(label, 4);
+    gtk_widget_set_margin_bottom(label, 6);
     return label;
 }
 

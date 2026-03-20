@@ -284,13 +284,13 @@ static void refresh_entries(SearchData *sd)
         GtkWidget *icon = gtk_image_new_from_icon_name(icon_for_type(type));
         gtk_image_set_pixel_size(GTK_IMAGE(icon), 18);
         gtk_widget_add_css_class(icon, "entry-icon");
+        gtk_widget_set_valign(icon, GTK_ALIGN_CENTER);
         gtk_box_append(GTK_BOX(row_box), icon);
 
         GtkWidget *text_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
         gtk_widget_set_hexpand(text_box, TRUE);
+        gtk_widget_set_valign(text_box, GTK_ALIGN_CENTER);
         gboolean has_subtitle = subtitle && *subtitle;
-        if (!has_subtitle)
-            gtk_widget_set_valign(text_box, GTK_ALIGN_CENTER);
 
         GtkWidget *name_label = gtk_label_new(name);
         gtk_widget_add_css_class(name_label, "entry-name");
@@ -312,6 +312,7 @@ static void refresh_entries(SearchData *sd)
             GtkWidget *totp_indicator = gtk_label_new("\xf0\x9f\x94\x91");
             gtk_widget_add_css_class(totp_indicator, "totp-indicator");
             gtk_widget_set_valign(totp_indicator, GTK_ALIGN_CENTER);
+            gtk_widget_set_margin_end(totp_indicator, 2);
             gtk_box_append(GTK_BOX(row_box), totp_indicator);
         }
 
