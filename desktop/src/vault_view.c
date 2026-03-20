@@ -1066,10 +1066,8 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
     gtk_stack_add_named(GTK_STACK(vd->add_stack), build_add_form(vd), "add");
     gtk_stack_set_visible_child_name(GTK_STACK(vd->add_stack), "list");
 
-    GtkWidget *left_scroll = gtk_scrolled_window_new();
-    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(left_scroll), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
-    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(left_scroll), vd->add_stack);
-    gtk_paned_set_start_child(GTK_PANED(paned), left_scroll);
+    gtk_widget_add_css_class(vd->add_stack, "view");
+    gtk_paned_set_start_child(GTK_PANED(paned), vd->add_stack);
 
     /* right: detail panel */
     vd->detail_stack = gtk_stack_new();

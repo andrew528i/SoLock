@@ -290,6 +290,22 @@ static void refresh_entries(SearchData *sd)
         gtk_widget_set_margin_bottom(row_box, 4);
         gtk_widget_set_size_request(row_box, -1, 48);
 
+        char lbl_char = label_char_for_index(i);
+        GtkWidget *hint_revealer = gtk_revealer_new();
+        gtk_revealer_set_transition_type(GTK_REVEALER(hint_revealer), GTK_REVEALER_TRANSITION_TYPE_SLIDE_RIGHT);
+        gtk_revealer_set_transition_duration(GTK_REVEALER(hint_revealer), 100);
+        gtk_revealer_set_reveal_child(GTK_REVEALER(hint_revealer), FALSE);
+        gtk_widget_set_margin_start(hint_revealer, 4);
+        if (lbl_char) {
+            char lbl_str[2] = { lbl_char, '\0' };
+            GtkWidget *hint = gtk_label_new(lbl_str);
+            gtk_widget_add_css_class(hint, "label-hint");
+            gtk_widget_add_css_class(hint, "label-hint-visible");
+            gtk_widget_set_margin_end(hint, 4);
+            gtk_revealer_set_child(GTK_REVEALER(hint_revealer), hint);
+        }
+        gtk_box_append(GTK_BOX(row_box), hint_revealer);
+
         GtkWidget *icon = gtk_image_new_from_icon_name(icon_for_type(type));
         gtk_image_set_pixel_size(GTK_IMAGE(icon), 18);
         gtk_widget_add_css_class(icon, "entry-icon");
@@ -297,20 +313,6 @@ static void refresh_entries(SearchData *sd)
         gtk_widget_set_margin_start(icon, 11);
         gtk_widget_set_margin_end(icon, 10);
         gtk_box_append(GTK_BOX(row_box), icon);
-
-        char lbl_char = label_char_for_index(i);
-        GtkWidget *hint_revealer = gtk_revealer_new();
-        gtk_revealer_set_transition_type(GTK_REVEALER(hint_revealer), GTK_REVEALER_TRANSITION_TYPE_SLIDE_RIGHT);
-        gtk_revealer_set_transition_duration(GTK_REVEALER(hint_revealer), 100);
-        gtk_revealer_set_reveal_child(GTK_REVEALER(hint_revealer), FALSE);
-        if (lbl_char) {
-            char lbl_str[2] = { lbl_char, '\0' };
-            GtkWidget *hint = gtk_label_new(lbl_str);
-            gtk_widget_add_css_class(hint, "label-hint");
-            gtk_widget_add_css_class(hint, "label-hint-visible");
-            gtk_revealer_set_child(GTK_REVEALER(hint_revealer), hint);
-        }
-        gtk_box_append(GTK_BOX(row_box), hint_revealer);
 
         GtkWidget *text_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
         gtk_widget_set_hexpand(text_box, TRUE);
