@@ -55,6 +55,9 @@ SolockApp    *solock_app_new(void);
 GtkWidget    *solock_popup_new(SolockApp *app);
 void          solock_popup_show(GtkWidget *popup);
 void          solock_popup_hide(GtkWidget *popup);
+void          solock_popup_toggle(GtkWidget *popup);
+void          solock_popup_switch_to_search(GtkWidget *popup);
+void          solock_popup_switch_to_detail(GtkWidget *popup, JsonNode *entry);
 
 /* unlock.h */
 GtkWidget    *solock_unlock_view_new(SolockApp *app);

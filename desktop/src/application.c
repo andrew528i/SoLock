@@ -7,6 +7,7 @@ struct _SolockApp {
     GtkWidget      *popup;
     GtkWidget      *main_window;
     guint           expiry_timer;
+    gboolean        started;
 };
 
 typedef struct _SolockAppClass {
@@ -19,13 +20,12 @@ static void on_activate(GApplication *gapp)
 {
     SolockApp *app = (SolockApp *)gapp;
 
-    AdwStyleManager *style = adw_style_manager_get_default();
-    adw_style_manager_set_color_scheme(style, ADW_COLOR_SCHEME_PREFER_DARK);
-
-    if (app->popup) {
-        solock_popup_show(app->popup);
+    if (app->started) {
+        solock_popup_toggle(app->popup);
         return;
     }
+
+    app->started = TRUE;
 
     if (!solock_wtype_available()) {
         g_message("wtype not found, auto-paste will use clipboard fallback");
@@ -39,9 +39,7 @@ static void on_activate(GApplication *gapp)
     }
 
     solock_tray_setup(app);
-
     app->popup = solock_popup_new(app);
-    solock_popup_show(app->popup);
 }
 
 static gboolean on_expiry_check(gpointer data)
@@ -68,6 +66,9 @@ static void solock_app_startup(GApplication *gapp)
 {
     G_APPLICATION_CLASS(solock_app_parent_class)->startup(gapp);
     SolockApp *app = (SolockApp *)gapp;
+
+    AdwStyleManager *style = adw_style_manager_get_default();
+    adw_style_manager_set_color_scheme(style, ADW_COLOR_SCHEME_PREFER_DARK);
 
     app->config = solock_config_new();
     solock_config_load(app->config);
@@ -99,6 +100,7 @@ static void solock_app_init(SolockApp *app)
     app->popup = NULL;
     app->main_window = NULL;
     app->expiry_timer = 0;
+    app->started = FALSE;
 }
 
 static void solock_app_class_init(SolockAppClass *klass)

@@ -192,15 +192,12 @@ static void sni_method_call(GDBusConnection *conn, const char *sender,
                              const char *method, GVariant *params,
                              GDBusMethodInvocation *invocation, gpointer data)
 {
-    (void)conn; (void)sender; (void)path; (void)iface; (void)data;
+    (void)conn; (void)sender; (void)path; (void)iface; (void)params; (void)data;
 
-    if (g_strcmp0(method, "Activate") == 0) {
-        solock_popup_show(solock_app_get_popup(tray->app));
-        g_dbus_method_invocation_return_value(invocation, NULL);
-    } else if (g_strcmp0(method, "ContextMenu") == 0 ||
-               g_strcmp0(method, "SecondaryActivate") == 0 ||
-               g_strcmp0(method, "Scroll") == 0) {
-        (void)params;
+    if (g_strcmp0(method, "Activate") == 0 ||
+        g_strcmp0(method, "ContextMenu") == 0 ||
+        g_strcmp0(method, "SecondaryActivate") == 0 ||
+        g_strcmp0(method, "Scroll") == 0) {
         g_dbus_method_invocation_return_value(invocation, NULL);
     } else {
         g_dbus_method_invocation_return_dbus_error(invocation,
@@ -230,7 +227,7 @@ static GVariant *sni_get_property(GDBusConnection *conn, const char *sender,
     if (g_strcmp0(property, "Menu") == 0)
         return g_variant_new_object_path(DBUSMENU_PATH);
     if (g_strcmp0(property, "ItemIsMenu") == 0)
-        return g_variant_new_boolean(FALSE);
+        return g_variant_new_boolean(TRUE);
     if (g_strcmp0(property, "ToolTip") == 0) {
         const char *tooltip = tray->locked ? "SoLock - Locked" : "SoLock - Unlocked";
         GVariantBuilder pixmaps;
