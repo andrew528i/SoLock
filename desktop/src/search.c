@@ -102,11 +102,21 @@ static void close_search(SearchData *sd)
     refresh_entries(sd);
 }
 
+static void on_list_mouse_motion(GtkEventControllerMotion *ctrl,
+                                 double x, double y, gpointer data)
+{
+    (void)ctrl; (void)x; (void)y;
+    SearchData *sd = data;
+    gtk_widget_remove_css_class(sd->list_box, "keyboard-nav");
+}
+
 static gboolean on_key_pressed(GtkEventControllerKey *ctrl, guint keyval,
                                 guint keycode, GdkModifierType state, gpointer data)
 {
     (void)ctrl; (void)keycode;
     SearchData *sd = data;
+
+    gtk_widget_add_css_class(sd->list_box, "keyboard-nav");
 
     if (keyval == GDK_KEY_Control_L || keyval == GDK_KEY_Control_R) {
         sd->label_mode = TRUE;
@@ -441,6 +451,10 @@ GtkWidget *solock_search_view_new(SolockApp *app)
     g_signal_connect(key_ctrl, "key-pressed", G_CALLBACK(on_key_pressed), sd);
     g_signal_connect(key_ctrl, "key-released", G_CALLBACK(on_key_released), sd);
     gtk_widget_add_controller(box, key_ctrl);
+
+    GtkEventController *mouse_ctrl = gtk_event_controller_motion_new();
+    g_signal_connect(mouse_ctrl, "motion", G_CALLBACK(on_list_mouse_motion), sd);
+    gtk_widget_add_controller(list_box, mouse_ctrl);
 
     return box;
 }

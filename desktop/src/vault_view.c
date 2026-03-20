@@ -466,6 +466,24 @@ static const char *vault_get_totp_secret(JsonObject *obj)
     return NULL;
 }
 
+static void on_sensitive_row_enter(GtkEventControllerMotion *ctrl,
+                                   double x, double y, gpointer data)
+{
+    (void)ctrl; (void)x; (void)y;
+    GtkWidget *row = data;
+    const char *rv = g_object_get_data(G_OBJECT(row), "real-value");
+    if (rv)
+        adw_action_row_set_subtitle(ADW_ACTION_ROW(row), rv);
+}
+
+static void on_sensitive_row_leave(GtkEventControllerMotion *ctrl, gpointer data)
+{
+    (void)ctrl;
+    GtkWidget *row = data;
+    adw_action_row_set_subtitle(ADW_ACTION_ROW(row),
+        "\xe2\x80\xa2\xe2\x80\xa2\xe2\x80\xa2\xe2\x80\xa2\xe2\x80\xa2\xe2\x80\xa2\xe2\x80\xa2\xe2\x80\xa2");
+}
+
 static void vault_show_detail(VaultData *vd, JsonObject *obj)
 {
     vd->editing = FALSE;
@@ -522,6 +540,14 @@ static void vault_show_detail(VaultData *vd, JsonObject *obj)
         if (is_sensitive_field(key)) {
             adw_action_row_set_subtitle(ADW_ACTION_ROW(row),
                 "\xe2\x80\xa2\xe2\x80\xa2\xe2\x80\xa2\xe2\x80\xa2\xe2\x80\xa2\xe2\x80\xa2\xe2\x80\xa2\xe2\x80\xa2");
+            g_object_set_data_full(G_OBJECT(row), "real-value",
+                                   g_strdup(value), g_free);
+            GtkEventController *motion = gtk_event_controller_motion_new();
+            g_signal_connect(motion, "enter",
+                G_CALLBACK(on_sensitive_row_enter), row);
+            g_signal_connect(motion, "leave",
+                G_CALLBACK(on_sensitive_row_leave), row);
+            gtk_widget_add_controller(row, motion);
         } else {
             adw_action_row_set_subtitle(ADW_ACTION_ROW(row), value);
             adw_action_row_set_subtitle_selectable(ADW_ACTION_ROW(row), TRUE);
@@ -1078,7 +1104,7 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
 
     vd->list_box = gtk_list_box_new();
     gtk_list_box_set_selection_mode(GTK_LIST_BOX(vd->list_box), GTK_SELECTION_SINGLE);
-    gtk_widget_add_css_class(vd->list_box, "navigation-sidebar");
+    gtk_widget_add_css_class(vd->list_box, "boxed-list");
     g_signal_connect(vd->list_box, "row-activated", G_CALLBACK(on_entry_row_activated), vd);
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scroll), vd->list_box);
     gtk_box_append(GTK_BOX(list_panel), scroll);

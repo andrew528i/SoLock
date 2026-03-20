@@ -46,6 +46,10 @@
     background-color: rgba(127, 187, 179, 0.08);
 }
 
+.entry-list.keyboard-nav row:hover {
+    background-color: transparent;
+}
+
 .entry-list row:selected {
     background-color: rgba(127, 187, 179, 0.16);
 }
