@@ -8,6 +8,8 @@ extern GtkWidget    *solock_app_get_popup(SolockApp *app);
 static const char LABEL_CHARS[] = "asdfghjkl";
 static const int  LABEL_CHARS_LEN = 9;
 
+static void *active_detail_data = NULL;
+
 typedef struct {
     char *label;
     char *value;
@@ -20,6 +22,7 @@ typedef struct {
     guint      totp_timer;
     GtkWidget *totp_code_label;
     GtkWidget *totp_bar;
+    GtkWidget *totp_hint_revealer;
     GtkWidget *box;
     GtkWidget *fields_box;
     gboolean   label_mode;
@@ -176,10 +179,11 @@ static void on_totp_clicked(GtkGestureClick *gesture, int n_press, double x, dou
         SolockConfig *config = solock_app_get_config(tcd->app);
         int clear = solock_config_get_clipboard_clear_seconds(config);
         solock_clipboard_copy(tcd->code, clear, NULL);
+        do_paste_value(tcd->app, tcd->code);
+    } else {
+        GtkWidget *popup = solock_app_get_popup(tcd->app);
+        solock_popup_hide(popup);
     }
-
-    GtkWidget *popup = solock_app_get_popup(tcd->app);
-    solock_popup_hide(popup);
 }
 
 static const char *get_totp_secret(JsonObject *obj)
@@ -228,6 +232,16 @@ static gboolean update_totp(gpointer data)
 
     gtk_level_bar_set_value(GTK_LEVEL_BAR(dd->totp_bar), (double)remaining / 30.0);
 
+    gtk_widget_remove_css_class(dd->totp_bar, "totp-ok");
+    gtk_widget_remove_css_class(dd->totp_bar, "totp-warn");
+    gtk_widget_remove_css_class(dd->totp_bar, "totp-danger");
+    if (remaining >= 10)
+        gtk_widget_add_css_class(dd->totp_bar, "totp-ok");
+    else if (remaining >= 4)
+        gtk_widget_add_css_class(dd->totp_bar, "totp-warn");
+    else
+        gtk_widget_add_css_class(dd->totp_bar, "totp-danger");
+
     json_node_unref(result);
     return G_SOURCE_CONTINUE;
 }
@@ -236,6 +250,9 @@ static void on_detail_destroy(GtkWidget *widget, gpointer data)
 {
     (void)widget;
     DetailData *dd = data;
+
+    if (active_detail_data == dd)
+        active_detail_data = NULL;
 
     if (dd->totp_timer > 0) {
         g_source_remove(dd->totp_timer);
@@ -280,6 +297,13 @@ static gboolean on_key_pressed(GtkEventControllerKey *ctrl, guint keyval,
                     do_paste_value(dd->app, dd->fields[i].value);
                     return TRUE;
                 }
+            }
+            int totp_idx = dd->field_count;
+            if (dd->totp_code_label && totp_idx < LABEL_CHARS_LEN && LABEL_CHARS[totp_idx] == ch) {
+                TotpClickData *tcd = g_object_get_data(G_OBJECT(dd->totp_code_label), "totp-click-data");
+                if (tcd && tcd->code && *tcd->code)
+                    do_paste_value(dd->app, tcd->code);
+                return TRUE;
             }
         }
     }
@@ -345,11 +369,22 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
             gtk_widget_set_margin_top(totp_section, 4);
             gtk_widget_set_margin_bottom(totp_section, 12);
 
+            GtkWidget *totp_header_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+
+            GtkWidget *totp_hint_revealer = gtk_revealer_new();
+            gtk_revealer_set_transition_type(GTK_REVEALER(totp_hint_revealer), GTK_REVEALER_TRANSITION_TYPE_CROSSFADE);
+            gtk_revealer_set_transition_duration(GTK_REVEALER(totp_hint_revealer), 100);
+            gtk_revealer_set_reveal_child(GTK_REVEALER(totp_hint_revealer), FALSE);
+            gtk_widget_set_hexpand(totp_hint_revealer, FALSE);
+            gtk_box_append(GTK_BOX(totp_header_box), totp_hint_revealer);
+
             GtkWidget *totp_header = gtk_label_new("One-Time Password");
             gtk_widget_add_css_class(totp_header, "dim-label");
             gtk_widget_add_css_class(totp_header, "detail-field-label");
             gtk_label_set_xalign(GTK_LABEL(totp_header), 0);
-            gtk_box_append(GTK_BOX(totp_section), totp_header);
+            gtk_box_append(GTK_BOX(totp_header_box), totp_header);
+
+            gtk_box_append(GTK_BOX(totp_section), totp_header_box);
 
             GtkWidget *totp_code = gtk_label_new("--- ---");
             gtk_widget_add_css_class(totp_code, "totp-code");
@@ -378,6 +413,7 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
 
             dd->totp_code_label = totp_code;
             dd->totp_bar = totp_bar;
+            dd->totp_hint_revealer = totp_hint_revealer;
 
             GtkWidget *sep2 = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
             gtk_widget_set_margin_bottom(sep2, 8);
@@ -394,6 +430,13 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
 
     dd->fields = g_new0(FieldInfo, field_count);
     dd->field_count = field_count;
+
+    if (dd->totp_hint_revealer && field_count < LABEL_CHARS_LEN) {
+        char lbl_str[2] = { LABEL_CHARS[field_count], '\0' };
+        GtkWidget *hint = gtk_label_new(lbl_str);
+        gtk_widget_add_css_class(hint, "label-hint");
+        gtk_revealer_set_child(GTK_REVEALER(dd->totp_hint_revealer), hint);
+    }
 
     GtkWidget *fields_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     dd->fields_box = fields_box;
@@ -421,6 +464,7 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
         gtk_revealer_set_transition_type(GTK_REVEALER(hint_revealer), GTK_REVEALER_TRANSITION_TYPE_CROSSFADE);
         gtk_revealer_set_transition_duration(GTK_REVEALER(hint_revealer), 100);
         gtk_revealer_set_reveal_child(GTK_REVEALER(hint_revealer), FALSE);
+        gtk_widget_set_hexpand(hint_revealer, FALSE);
         if (idx < LABEL_CHARS_LEN) {
             char lbl_str[2] = { LABEL_CHARS[idx], '\0' };
             GtkWidget *hint = gtk_label_new(lbl_str);
@@ -478,7 +522,17 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
     g_signal_connect(box, "destroy", G_CALLBACK(on_detail_destroy), dd);
     g_signal_connect_swapped(box, "map", G_CALLBACK(gtk_widget_grab_focus), box);
 
+    active_detail_data = dd;
+
     return box;
+}
+
+void solock_fields_reset_label_mode(void)
+{
+    if (!active_detail_data) return;
+    DetailData *dd = active_detail_data;
+    dd->label_mode = FALSE;
+    update_label_hints(dd);
 }
 
 static void update_label_hints(DetailData *dd)
@@ -497,4 +551,7 @@ static void update_label_hints(DetailData *dd)
             gtk_revealer_set_reveal_child(GTK_REVEALER(hint_revealer), dd->label_mode);
         }
     }
+
+    if (dd->totp_hint_revealer)
+        gtk_revealer_set_reveal_child(GTK_REVEALER(dd->totp_hint_revealer), dd->label_mode);
 }

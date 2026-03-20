@@ -149,6 +149,7 @@ void solock_popup_show(GtkWidget *popup)
         gtk_stack_set_visible_child_name(GTK_STACK(popup_data->stack), "search");
     }
 
+    solock_fields_reset_label_mode();
     gtk_widget_set_visible(popup, TRUE);
 }
 

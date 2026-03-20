@@ -18,6 +18,7 @@ typedef struct {
     GtkWidget *cards_row;
     GtkWidget *totps_row;
     GtkWidget *sync_row;
+    GtkWidget *rent_row;
     GtkWidget *refresh_btn;
     GtkWidget *spinner;
     char *deployer_text;
@@ -71,15 +72,15 @@ static void dashboard_refresh_done(DashboardData *dd, JsonNode *info)
     g_free(bal_str);
 
     const char *network = json_object_get_string_member(obj, "network");
-    if (network && *network) {
-        gtk_label_set_text(GTK_LABEL(dd->network_label), network);
-        gtk_widget_remove_css_class(dd->network_label, "success");
-        gtk_widget_remove_css_class(dd->network_label, "warning");
-        if (g_strcmp0(network, "devnet") == 0)
-            gtk_widget_add_css_class(dd->network_label, "success");
-        else
-            gtk_widget_add_css_class(dd->network_label, "warning");
-    }
+    if (!network || !*network)
+        network = "devnet";
+    gtk_label_set_text(GTK_LABEL(dd->network_label), network);
+    gtk_widget_remove_css_class(dd->network_label, "success");
+    gtk_widget_remove_css_class(dd->network_label, "warning");
+    if (g_strcmp0(network, "devnet") == 0)
+        gtk_widget_add_css_class(dd->network_label, "success");
+    else
+        gtk_widget_add_css_class(dd->network_label, "warning");
 
     gboolean deployed = json_object_get_boolean_member(obj, "program_deployed");
     set_row_value(dd->program_status_row, deployed ? "Deployed" : "Not deployed");
@@ -91,6 +92,11 @@ static void dashboard_refresh_done(DashboardData *dd, JsonNode *info)
     char *entries_str = g_strdup_printf("%lld", (long long)entry_count);
     set_row_value(dd->entries_row, entries_str);
     g_free(entries_str);
+
+    double rent = (double)entry_count * 0.002 + 0.007;
+    char *rent_str = g_strdup_printf("%.3f SOL", rent);
+    set_row_value(dd->rent_row, rent_str);
+    g_free(rent_str);
 
     gint64 pw_count = json_object_get_int_member(obj, "password_count");
     char *pw_str = g_strdup_printf("%lld", (long long)pw_count);
@@ -158,6 +164,8 @@ static GtkWidget *make_action_row(const char *title, const char *subtitle)
     adw_preferences_row_set_title(ADW_PREFERENCES_ROW(row), title);
     adw_action_row_set_subtitle(ADW_ACTION_ROW(row), subtitle);
     adw_action_row_set_subtitle_selectable(ADW_ACTION_ROW(row), TRUE);
+    gtk_widget_set_margin_top(row, 2);
+    gtk_widget_set_margin_bottom(row, 2);
     return row;
 }
 
@@ -221,7 +229,7 @@ GtkWidget *solock_dashboard_view_new(SolockApp *app)
     gtk_box_append(GTK_BOX(box), network_box);
 
     /* account section */
-    gtk_box_append(GTK_BOX(box), make_section_label("Account"));
+    gtk_box_append(GTK_BOX(box), make_section_label("\xf0\x9f\x91\xa4 Account"));
 
     GtkWidget *account_group = adw_preferences_group_new();
 
@@ -247,7 +255,7 @@ GtkWidget *solock_dashboard_view_new(SolockApp *app)
     gtk_box_append(GTK_BOX(box), account_group);
 
     /* status section */
-    gtk_box_append(GTK_BOX(box), make_section_label("Status"));
+    gtk_box_append(GTK_BOX(box), make_section_label("\xf0\x9f\x93\xa1 Status"));
 
     GtkWidget *status_group = adw_preferences_group_new();
 
@@ -260,7 +268,7 @@ GtkWidget *solock_dashboard_view_new(SolockApp *app)
     gtk_box_append(GTK_BOX(box), status_group);
 
     /* entries section */
-    gtk_box_append(GTK_BOX(box), make_section_label("Entries"));
+    gtk_box_append(GTK_BOX(box), make_section_label("\xf0\x9f\x93\xa6 Entries"));
 
     GtkWidget *entries_group = adw_preferences_group_new();
 
@@ -279,10 +287,13 @@ GtkWidget *solock_dashboard_view_new(SolockApp *app)
     dd->totps_row = make_action_row("Authenticators", "-");
     adw_preferences_group_add(ADW_PREFERENCES_GROUP(entries_group), dd->totps_row);
 
+    dd->rent_row = make_action_row("Estimated Rent", "-");
+    adw_preferences_group_add(ADW_PREFERENCES_GROUP(entries_group), dd->rent_row);
+
     gtk_box_append(GTK_BOX(box), entries_group);
 
     /* sync section */
-    gtk_box_append(GTK_BOX(box), make_section_label("Sync"));
+    gtk_box_append(GTK_BOX(box), make_section_label("\xf0\x9f\x94\x84 Sync"));
 
     GtkWidget *sync_group = adw_preferences_group_new();
 
@@ -290,6 +301,13 @@ GtkWidget *solock_dashboard_view_new(SolockApp *app)
     adw_preferences_group_add(ADW_PREFERENCES_GROUP(sync_group), dd->sync_row);
 
     gtk_box_append(GTK_BOX(box), sync_group);
+
+    GtkWidget *clear_btn = gtk_button_new_with_label("Clear Local DB");
+    gtk_widget_add_css_class(clear_btn, "destructive-action");
+    gtk_widget_set_sensitive(clear_btn, FALSE);
+    gtk_widget_set_halign(clear_btn, GTK_ALIGN_START);
+    gtk_widget_set_margin_top(clear_btn, 16);
+    gtk_box_append(GTK_BOX(box), clear_btn);
 
     adw_clamp_set_child(ADW_CLAMP(clamp), box);
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scroll), clamp);

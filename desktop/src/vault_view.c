@@ -86,6 +86,19 @@ typedef struct {
     GtkWidget *detail_action_bar;
     char      *selected_id;
 
+    /* detail totp */
+    GtkWidget *detail_totp_code;
+    GtkWidget *detail_totp_bar;
+    guint      detail_totp_timer;
+    char      *detail_totp_secret;
+
+    /* stats labels */
+    GtkWidget *stats_total;
+    GtkWidget *stats_passwords;
+    GtkWidget *stats_cards;
+    GtkWidget *stats_notes;
+    GtkWidget *stats_totp;
+
     /* add form */
     GtkWidget *add_stack;
     GtkWidget *add_type_dropdown;
@@ -104,6 +117,7 @@ typedef struct {
 static void vault_refresh_entries(VaultData *vd);
 static void vault_show_detail(VaultData *vd, JsonObject *obj);
 static void vault_clear_detail(VaultData *vd);
+static void vault_stop_detail_totp(VaultData *vd);
 
 static void on_copy_field_clicked(GtkButton *button, gpointer data)
 {
@@ -143,6 +157,38 @@ static void on_search_changed(GtkEditable *editable, gpointer data)
     vault_refresh_entries(vd);
 }
 
+static void vault_update_stats(VaultData *vd)
+{
+    int total = 0, passwords = 0, cards = 0, notes = 0, totp = 0;
+
+    if (vd->entries && JSON_NODE_TYPE(vd->entries) == JSON_NODE_ARRAY) {
+        JsonArray *arr = json_node_get_array(vd->entries);
+        total = (int)json_array_get_length(arr);
+        for (guint i = 0; i < (guint)total; i++) {
+            JsonObject *obj = json_array_get_object_element(arr, i);
+            const char *type = json_object_get_string_member(obj, "type");
+            if (g_strcmp0(type, "password") == 0) passwords++;
+            else if (g_strcmp0(type, "card") == 0) cards++;
+            else if (g_strcmp0(type, "note") == 0) notes++;
+            if (g_strcmp0(type, "totp") == 0 ||
+                json_object_get_boolean_member_with_default(obj, "has_totp", FALSE))
+                totp++;
+        }
+    }
+
+    char buf[32];
+    g_snprintf(buf, sizeof(buf), "%d", total);
+    adw_action_row_set_subtitle(ADW_ACTION_ROW(vd->stats_total), buf);
+    g_snprintf(buf, sizeof(buf), "%d", passwords);
+    adw_action_row_set_subtitle(ADW_ACTION_ROW(vd->stats_passwords), buf);
+    g_snprintf(buf, sizeof(buf), "%d", cards);
+    adw_action_row_set_subtitle(ADW_ACTION_ROW(vd->stats_cards), buf);
+    g_snprintf(buf, sizeof(buf), "%d", notes);
+    adw_action_row_set_subtitle(ADW_ACTION_ROW(vd->stats_notes), buf);
+    g_snprintf(buf, sizeof(buf), "%d", totp);
+    adw_action_row_set_subtitle(ADW_ACTION_ROW(vd->stats_totp), buf);
+}
+
 static void vault_refresh_entries(VaultData *vd)
 {
     GtkWidget *child;
@@ -170,7 +216,10 @@ static void vault_refresh_entries(VaultData *vd)
         g_error_free(error);
     }
 
-    if (!vd->entries || JSON_NODE_TYPE(vd->entries) != JSON_NODE_ARRAY) return;
+    if (!vd->entries || JSON_NODE_TYPE(vd->entries) != JSON_NODE_ARRAY) {
+        vault_update_stats(vd);
+        return;
+    }
 
     JsonArray *arr = json_node_get_array(vd->entries);
     guint len = json_array_get_length(arr);
@@ -196,6 +245,7 @@ static void vault_refresh_entries(VaultData *vd)
         gtk_widget_set_margin_end(row_box, 8);
         gtk_widget_set_margin_top(row_box, 6);
         gtk_widget_set_margin_bottom(row_box, 6);
+        gtk_widget_set_size_request(row_box, -1, 40);
 
         GtkWidget *icon = gtk_image_new_from_icon_name(icon_for_type(type));
         gtk_image_set_pixel_size(GTK_IMAGE(icon), 18);
@@ -204,6 +254,8 @@ static void vault_refresh_entries(VaultData *vd)
 
         GtkWidget *text_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
         gtk_widget_set_hexpand(text_box, TRUE);
+        if (!subtitle || !*subtitle)
+            gtk_widget_set_valign(text_box, GTK_ALIGN_CENTER);
 
         GtkWidget *name_label = gtk_label_new(name);
         gtk_label_set_xalign(GTK_LABEL(name_label), 0);
@@ -229,21 +281,90 @@ static void vault_refresh_entries(VaultData *vd)
 
         gtk_list_box_append(GTK_LIST_BOX(vd->list_box), row_box);
     }
+
+    vault_update_stats(vd);
 }
 
 /* detail view */
 
 static void vault_clear_detail(VaultData *vd)
 {
+    vault_stop_detail_totp(vd);
     g_free(vd->selected_id);
     vd->selected_id = NULL;
     vd->editing = FALSE;
     gtk_stack_set_visible_child_name(GTK_STACK(vd->detail_stack), "empty");
 }
 
+static void vault_stop_detail_totp(VaultData *vd)
+{
+    if (vd->detail_totp_timer > 0) {
+        g_source_remove(vd->detail_totp_timer);
+        vd->detail_totp_timer = 0;
+    }
+    g_free(vd->detail_totp_secret);
+    vd->detail_totp_secret = NULL;
+    vd->detail_totp_code = NULL;
+    vd->detail_totp_bar = NULL;
+}
+
+static gboolean vault_update_totp(gpointer data)
+{
+    VaultData *vd = data;
+    if (!vd->detail_totp_secret || !vd->detail_totp_code) return G_SOURCE_REMOVE;
+
+    SolockClient *client = solock_app_get_client(vd->app);
+    JsonNode *result = solock_client_generate_totp(client, vd->detail_totp_secret, 0, 0, NULL);
+    if (!result) return G_SOURCE_CONTINUE;
+
+    JsonObject *res = json_node_get_object(result);
+    const char *code = json_object_get_string_member(res, "code");
+    gint64 remaining = json_object_get_int_member(res, "remaining");
+
+    gsize code_len = strlen(code);
+    char *formatted = NULL;
+    if (code_len == 6)
+        formatted = g_strdup_printf("%.3s %.3s", code, code + 3);
+    else
+        formatted = g_strdup(code);
+    gtk_label_set_text(GTK_LABEL(vd->detail_totp_code), formatted);
+    g_free(formatted);
+
+    if (vd->detail_totp_bar) {
+        gtk_level_bar_set_value(GTK_LEVEL_BAR(vd->detail_totp_bar), (double)remaining / 30.0);
+
+        gtk_widget_remove_css_class(vd->detail_totp_bar, "totp-ok");
+        gtk_widget_remove_css_class(vd->detail_totp_bar, "totp-warn");
+        gtk_widget_remove_css_class(vd->detail_totp_bar, "totp-danger");
+        if (remaining >= 10)
+            gtk_widget_add_css_class(vd->detail_totp_bar, "totp-ok");
+        else if (remaining >= 4)
+            gtk_widget_add_css_class(vd->detail_totp_bar, "totp-warn");
+        else
+            gtk_widget_add_css_class(vd->detail_totp_bar, "totp-danger");
+    }
+
+    json_node_unref(result);
+    return G_SOURCE_CONTINUE;
+}
+
+static const char *vault_get_totp_secret(JsonObject *obj)
+{
+    const char *type = json_object_get_string_member(obj, "type");
+    JsonObject *fields = json_object_get_object_member(obj, "fields");
+    if (!fields) return NULL;
+
+    if (g_strcmp0(type, "password") == 0 && json_object_has_member(fields, "totp_secret"))
+        return json_object_get_string_member(fields, "totp_secret");
+    if (g_strcmp0(type, "totp") == 0 && json_object_has_member(fields, "secret"))
+        return json_object_get_string_member(fields, "secret");
+    return NULL;
+}
+
 static void vault_show_detail(VaultData *vd, JsonObject *obj)
 {
     vd->editing = FALSE;
+    vault_stop_detail_totp(vd);
 
     const char *id = json_object_get_string_member(obj, "id");
     const char *name = json_object_get_string_member(obj, "name");
@@ -274,6 +395,8 @@ static void vault_show_detail(VaultData *vd, JsonObject *obj)
 
         GtkWidget *row = adw_action_row_new();
         adw_preferences_row_set_title(ADW_PREFERENCES_ROW(row), human_label(key));
+        gtk_widget_set_margin_top(row, 2);
+        gtk_widget_set_margin_bottom(row, 2);
 
         if (is_sensitive_field(key)) {
             adw_action_row_set_subtitle(ADW_ACTION_ROW(row),
@@ -296,6 +419,38 @@ static void vault_show_detail(VaultData *vd, JsonObject *obj)
     g_list_free(members);
 
     gtk_box_append(GTK_BOX(vd->detail_fields_box), group);
+
+    gboolean has_totp = json_object_get_boolean_member_with_default(obj, "has_totp", FALSE);
+    const char *secret = vault_get_totp_secret(obj);
+    if (has_totp && secret && *secret) {
+        GtkWidget *totp_group = adw_preferences_group_new();
+        adw_preferences_group_set_title(ADW_PREFERENCES_GROUP(totp_group), "One-Time Password");
+        gtk_widget_set_margin_top(totp_group, 12);
+
+        GtkWidget *totp_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
+        gtk_widget_set_margin_start(totp_box, 12);
+        gtk_widget_set_margin_end(totp_box, 12);
+        gtk_widget_set_margin_top(totp_box, 8);
+        gtk_widget_set_margin_bottom(totp_box, 8);
+
+        vd->detail_totp_code = gtk_label_new("--- ---");
+        gtk_widget_add_css_class(vd->detail_totp_code, "title-1");
+        gtk_label_set_xalign(GTK_LABEL(vd->detail_totp_code), 0);
+        gtk_box_append(GTK_BOX(totp_box), vd->detail_totp_code);
+
+        vd->detail_totp_bar = gtk_level_bar_new_for_interval(0.0, 1.0);
+        gtk_level_bar_set_value(GTK_LEVEL_BAR(vd->detail_totp_bar), 1.0);
+        gtk_widget_add_css_class(vd->detail_totp_bar, "totp-progress");
+        gtk_widget_set_margin_top(vd->detail_totp_bar, 4);
+        gtk_box_append(GTK_BOX(totp_box), vd->detail_totp_bar);
+
+        adw_preferences_group_add(ADW_PREFERENCES_GROUP(totp_group), totp_box);
+        gtk_box_append(GTK_BOX(vd->detail_fields_box), totp_group);
+
+        vd->detail_totp_secret = g_strdup(secret);
+        vault_update_totp(vd);
+        vd->detail_totp_timer = g_timeout_add_seconds(1, vault_update_totp, vd);
+    }
 
     gtk_widget_set_visible(vd->detail_action_bar, TRUE);
     gtk_stack_set_visible_child_name(GTK_STACK(vd->detail_stack), "detail");
@@ -764,17 +919,47 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
     vd->detail_stack = gtk_stack_new();
     gtk_stack_set_transition_type(GTK_STACK(vd->detail_stack), GTK_STACK_TRANSITION_TYPE_CROSSFADE);
 
-    /* empty state */
-    vd->detail_empty = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+    /* empty state - summary */
+    vd->detail_empty = gtk_box_new(GTK_ORIENTATION_VERTICAL, 12);
     gtk_widget_set_valign(vd->detail_empty, GTK_ALIGN_CENTER);
     gtk_widget_set_halign(vd->detail_empty, GTK_ALIGN_CENTER);
+    gtk_widget_set_margin_start(vd->detail_empty, 24);
+    gtk_widget_set_margin_end(vd->detail_empty, 24);
+
     GtkWidget *empty_icon = gtk_image_new_from_icon_name("dialog-password-symbolic");
     gtk_image_set_pixel_size(GTK_IMAGE(empty_icon), 48);
     gtk_widget_add_css_class(empty_icon, "dim-label");
     gtk_box_append(GTK_BOX(vd->detail_empty), empty_icon);
-    GtkWidget *empty_label = gtk_label_new("Select an entry");
-    gtk_widget_add_css_class(empty_label, "dim-label");
-    gtk_box_append(GTK_BOX(vd->detail_empty), empty_label);
+
+    GtkWidget *stats_group = adw_preferences_group_new();
+    adw_preferences_group_set_title(ADW_PREFERENCES_GROUP(stats_group), "Summary");
+
+    vd->stats_total = adw_action_row_new();
+    adw_preferences_row_set_title(ADW_PREFERENCES_ROW(vd->stats_total), "Total Entries");
+    adw_action_row_set_subtitle(ADW_ACTION_ROW(vd->stats_total), "0");
+    adw_preferences_group_add(ADW_PREFERENCES_GROUP(stats_group), vd->stats_total);
+
+    vd->stats_passwords = adw_action_row_new();
+    adw_preferences_row_set_title(ADW_PREFERENCES_ROW(vd->stats_passwords), "Passwords");
+    adw_action_row_set_subtitle(ADW_ACTION_ROW(vd->stats_passwords), "0");
+    adw_preferences_group_add(ADW_PREFERENCES_GROUP(stats_group), vd->stats_passwords);
+
+    vd->stats_cards = adw_action_row_new();
+    adw_preferences_row_set_title(ADW_PREFERENCES_ROW(vd->stats_cards), "Cards");
+    adw_action_row_set_subtitle(ADW_ACTION_ROW(vd->stats_cards), "0");
+    adw_preferences_group_add(ADW_PREFERENCES_GROUP(stats_group), vd->stats_cards);
+
+    vd->stats_notes = adw_action_row_new();
+    adw_preferences_row_set_title(ADW_PREFERENCES_ROW(vd->stats_notes), "Notes");
+    adw_action_row_set_subtitle(ADW_ACTION_ROW(vd->stats_notes), "0");
+    adw_preferences_group_add(ADW_PREFERENCES_GROUP(stats_group), vd->stats_notes);
+
+    vd->stats_totp = adw_action_row_new();
+    adw_preferences_row_set_title(ADW_PREFERENCES_ROW(vd->stats_totp), "With 2FA");
+    adw_action_row_set_subtitle(ADW_ACTION_ROW(vd->stats_totp), "0");
+    adw_preferences_group_add(ADW_PREFERENCES_GROUP(stats_group), vd->stats_totp);
+
+    gtk_box_append(GTK_BOX(vd->detail_empty), stats_group);
     gtk_stack_add_named(GTK_STACK(vd->detail_stack), vd->detail_empty, "empty");
 
     /* detail view */

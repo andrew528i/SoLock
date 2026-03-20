@@ -67,6 +67,7 @@ GtkWidget    *solock_search_view_new(SolockApp *app);
 
 /* fields.h */
 GtkWidget    *solock_fields_view_new(SolockApp *app, JsonNode *entry);
+void          solock_fields_reset_label_mode(void);
 
 /* main_window.h */
 GtkWidget    *solock_main_window_new(SolockApp *app);
