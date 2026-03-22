@@ -680,7 +680,7 @@ static void on_edit_save_clicked(GtkButton *button, gpointer data)
 
     SolockClient *client = solock_app_get_client(vd->app);
     GError *error = NULL;
-    if (!solock_client_update_entry(client, vd->selected_id, new_name, fields_node, &error)) {
+    if (!solock_client_update_entry(client, vd->selected_id, new_name, fields_node, -1, FALSE, &error)) {
         g_warning("Update failed: %s", error->message);
         g_error_free(error);
         json_node_unref(fields_node);
