@@ -200,34 +200,46 @@ GtkWidget *solock_groups_view_new(SolockApp *app)
     GtkWidget *list_page = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 
     GtkWidget *toolbar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
-    gtk_widget_set_margin_start(toolbar, 12);
-    gtk_widget_set_margin_end(toolbar, 12);
-    gtk_widget_set_margin_top(toolbar, 12);
+    gtk_widget_set_margin_start(toolbar, 6);
+    gtk_widget_set_margin_end(toolbar, 6);
+    gtk_widget_set_margin_top(toolbar, 6);
     gtk_widget_set_margin_bottom(toolbar, 6);
 
-    GtkWidget *add_btn = gtk_button_new_with_label("New Group");
-    gtk_widget_add_css_class(add_btn, "suggested-action");
+    GtkWidget *title_label = gtk_label_new("Groups");
+    gtk_widget_add_css_class(title_label, "title-4");
+    gtk_widget_set_hexpand(title_label, TRUE);
+    gtk_label_set_xalign(GTK_LABEL(title_label), 0);
+    gtk_widget_set_margin_start(title_label, 6);
+    gtk_box_append(GTK_BOX(toolbar), title_label);
+
+    GtkWidget *add_btn = gtk_button_new_from_icon_name("list-add-symbolic");
+    gtk_widget_add_css_class(add_btn, "flat");
+    gtk_widget_set_tooltip_text(add_btn, "Add group");
     g_signal_connect(add_btn, "clicked", G_CALLBACK(on_add_clicked), gd);
     gtk_box_append(GTK_BOX(toolbar), add_btn);
 
     gtk_box_append(GTK_BOX(list_page), toolbar);
+
+    GtkWidget *sep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
+    gtk_box_append(GTK_BOX(list_page), sep);
 
     GtkWidget *scroll = gtk_scrolled_window_new();
     gtk_widget_set_vexpand(scroll, TRUE);
 
     GtkWidget *list_box = gtk_list_box_new();
     gtk_list_box_set_selection_mode(GTK_LIST_BOX(list_box), GTK_SELECTION_NONE);
-    gtk_widget_add_css_class(list_box, "boxed-list");
     gtk_widget_set_margin_start(list_box, 12);
     gtk_widget_set_margin_end(list_box, 12);
+    gtk_widget_set_margin_top(list_box, 6);
     gd->list_box = GTK_LIST_BOX(list_box);
 
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scroll), list_box);
     gtk_box_append(GTK_BOX(list_page), scroll);
 
-    GtkWidget *empty_label = gtk_label_new("No groups yet");
+    GtkWidget *empty_label = gtk_label_new("No groups yet. Click + to create one.");
     gtk_widget_add_css_class(empty_label, "dim-label");
-    gtk_widget_set_margin_top(empty_label, 24);
+    gtk_widget_set_margin_top(empty_label, 32);
+    gtk_widget_set_margin_bottom(empty_label, 32);
     gd->empty_label = empty_label;
     gtk_box_append(GTK_BOX(list_page), empty_label);
 
