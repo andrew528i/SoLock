@@ -614,6 +614,20 @@ func (mr *MockVaultRepositoryMockRecorder) Reset(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Reset", reflect.TypeOf((*MockVaultRepository)(nil).Reset), ctx)
 }
 
+// TransferAll mocks base method.
+func (m *MockVaultRepository) TransferAll(ctx context.Context, to string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TransferAll", ctx, to)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// TransferAll indicates an expected call of TransferAll.
+func (mr *MockVaultRepositoryMockRecorder) TransferAll(ctx, to any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TransferAll", reflect.TypeOf((*MockVaultRepository)(nil).TransferAll), ctx, to)
+}
+
 // UpdateEntry mocks base method.
 func (m *MockVaultRepository) UpdateEntry(ctx context.Context, index uint32, data []byte, expectedUpdatedAt int64) error {
 	m.ctrl.T.Helper()

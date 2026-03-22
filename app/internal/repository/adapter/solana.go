@@ -496,6 +496,46 @@ func (r *SolanaVaultRepo) CloseProgram(ctx context.Context) error {
 	return nil
 }
 
+func (r *SolanaVaultRepo) TransferAll(ctx context.Context, to string) error {
+	toPubkey, err := solana.PublicKeyFromBase58(to)
+	if err != nil {
+		return fmt.Errorf("invalid recipient address: %w", err)
+	}
+
+	balance, err := r.GetBalance(ctx)
+	if err != nil {
+		return fmt.Errorf("get balance: %w", err)
+	}
+	if balance == 0 {
+		return fmt.Errorf("balance is zero")
+	}
+
+	fee := uint64(5000)
+	if balance <= fee {
+		return fmt.Errorf("balance too low to cover fee")
+	}
+	amount := balance - fee
+
+	ix := solana.NewInstruction(
+		solana.SystemProgramID,
+		solana.AccountMetaSlice{
+			{PublicKey: r.owner.PublicKey(), IsSigner: true, IsWritable: true},
+			{PublicKey: toPubkey, IsSigner: false, IsWritable: true},
+		},
+		// SystemProgram::Transfer instruction data: [2, 0, 0, 0] + le_u64(amount)
+		transferInstructionData(amount),
+	)
+
+	return r.send(ctx, ix)
+}
+
+func transferInstructionData(lamports uint64) []byte {
+	data := make([]byte, 12)
+	binary.LittleEndian.PutUint32(data[0:4], 2) // Transfer instruction index
+	binary.LittleEndian.PutUint64(data[4:12], lamports)
+	return data
+}
+
 func (r *SolanaVaultRepo) send(ctx context.Context, ix solana.Instruction) error {
 	bh, err := r.rpc.GetLatestBlockhash(ctx, rpc.CommitmentFinalized)
 	if err != nil {

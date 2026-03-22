@@ -33,6 +33,7 @@ const (
 	screenGroupList
 	screenGroupAdd
 	screenGroupEdit
+	screenTransfer
 )
 
 type logEntry struct {
@@ -83,6 +84,8 @@ type App struct {
 	groupCursor    int
 	groupNameInput textinput.Model
 	editingGroup   *domain.Group
+
+	transferInput textinput.Model
 
 	typeCursor      int
 	entryFormType   domain.EntryType
@@ -146,6 +149,12 @@ func NewTUI(app *application.App) *App {
 	gi.Prompt = ""
 	gi.CharLimit = 64
 
+	wi := textinput.New()
+	wi.Placeholder = "Recipient SOL address"
+	wi.Width = 50
+	wi.Prompt = ""
+	wi.CharLimit = 44
+
 	return &App{
 		app:            app,
 		screen:         screenUnlock,
@@ -154,6 +163,7 @@ func NewTUI(app *application.App) *App {
 		progress:       prog,
 		searchInput:    si,
 		groupNameInput: gi,
+		transferInput:  wi,
 		network:        "devnet",
 		rpcURL:         "https://api.devnet.solana.com",
 		groupFilter:    -1,
@@ -358,6 +368,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a.updateGroupList(msg)
 	case screenGroupAdd, screenGroupEdit:
 		return a.updateGroupForm(msg)
+	case screenTransfer:
+		return a.updateTransfer(msg)
 	}
 	return a, nil
 }
@@ -386,6 +398,8 @@ func (a *App) View() string {
 		return a.viewGroupList()
 	case screenGroupAdd, screenGroupEdit:
 		return a.viewGroupForm()
+	case screenTransfer:
+		return a.viewTransfer()
 	}
 	return ""
 }
@@ -880,6 +894,15 @@ func (a *App) updateConfig(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return a, tea.Batch(a.checkBalance(), a.checkDeployStatus(), a.checkVaultStatus())
 		case "n":
 			a.toggleNetwork()
+			return a, nil
+		case "W":
+			if a.balance == 0 {
+				a.addLog("Balance is zero")
+				return a, nil
+			}
+			a.transferInput.SetValue("")
+			a.transferInput.Focus()
+			a.screen = screenTransfer
 			return a, nil
 		case "X":
 			if !a.programDeployed {

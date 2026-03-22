@@ -403,6 +403,9 @@ func (a *App) viewConfig() string {
 
 	var hints []string
 	hints = append(hints, helpKey("n", "network"))
+	if a.balance > 0 {
+		hints = append(hints, helpKey("W", "withdraw SOL"))
+	}
 	if a.programDeployed {
 		hints = append(hints, helpKey("X", "close program"))
 	}

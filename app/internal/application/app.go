@@ -59,6 +59,7 @@ type App struct {
 	PurgeGroup         *usecase.PurgeGroupUseCase
 	ListGroups         *usecase.ListGroupsUseCase
 	CloseProgram       *usecase.CloseProgramUseCase
+	TransferAll        *usecase.TransferAllUseCase
 }
 
 func New(dataDir string, vaultFactory VaultRepoFactory, storageFactory StorageFactory) *App {
@@ -134,6 +135,7 @@ func (a *App) OnUnlockWithTimeout(ctx context.Context, password, rpcURL string, 
 	a.PurgeGroup = usecase.NewPurgeGroupUseCase(a.groups, a.vault)
 	a.ListGroups = usecase.NewListGroupsUseCase(a.groups)
 	a.CloseProgram = usecase.NewCloseProgramUseCase(a.vault)
+	a.TransferAll = usecase.NewTransferAllUseCase(a.vault)
 
 	return nil
 }
