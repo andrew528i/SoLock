@@ -49,4 +49,5 @@ type VaultRepository interface {
 	IsProgramDeployed(ctx context.Context) (bool, error)
 	GetBalance(ctx context.Context) (uint64, error)
 	DeployProgram(ctx context.Context, programBinary []byte) error
+	CloseProgram(ctx context.Context) error
 }

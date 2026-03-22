@@ -396,6 +396,20 @@ func (mr *MockVaultRepositoryMockRecorder) AddGroup(ctx, index, data any) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddGroup", reflect.TypeOf((*MockVaultRepository)(nil).AddGroup), ctx, index, data)
 }
 
+// CloseProgram mocks base method.
+func (m *MockVaultRepository) CloseProgram(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CloseProgram", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CloseProgram indicates an expected call of CloseProgram.
+func (mr *MockVaultRepositoryMockRecorder) CloseProgram(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CloseProgram", reflect.TypeOf((*MockVaultRepository)(nil).CloseProgram), ctx)
+}
+
 // DeleteEntry mocks base method.
 func (m *MockVaultRepository) DeleteEntry(ctx context.Context, index uint32) error {
 	m.ctrl.T.Helper()

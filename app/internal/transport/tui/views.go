@@ -134,7 +134,7 @@ func (a *App) viewDashboard() string {
 	} else {
 		hints = append(hints, helpKey("r", "refresh"))
 	}
-	hints = append(hints, helpKey("x", "clear local"), helpKey("p", "copy addr"), helpKey("n", "net"), helpKey("c", "cfg"), helpKey("q", "quit"))
+	hints = append(hints, helpKey("G", "groups"), helpKey("x", "clear local"), helpKey("p", "copy addr"), helpKey("n", "net"), helpKey("c", "cfg"), helpKey("q", "quit"))
 	lines = append(lines, helpBar(hints...))
 
 	return strings.Join(lines, "\n") + "\n"
@@ -401,10 +401,13 @@ func (a *App) viewConfig() string {
 		dimStyle.Render(a.rpcURL),
 	))
 
-	lines = append(lines, "", helpBar(
-		helpKey("n", "network"),
-		helpKey("esc", "back"),
-	))
+	var hints []string
+	hints = append(hints, helpKey("n", "network"))
+	if a.programDeployed {
+		hints = append(hints, helpKey("X", "close program"))
+	}
+	hints = append(hints, helpKey("esc", "back"))
+	lines = append(lines, "", helpBar(hints...))
 	return strings.Join(lines, "\n") + "\n"
 }
 

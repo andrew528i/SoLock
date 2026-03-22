@@ -58,6 +58,7 @@ type App struct {
 	DeleteGroup        *usecase.DeleteGroupUseCase
 	PurgeGroup         *usecase.PurgeGroupUseCase
 	ListGroups         *usecase.ListGroupsUseCase
+	CloseProgram       *usecase.CloseProgramUseCase
 }
 
 func New(dataDir string, vaultFactory VaultRepoFactory, storageFactory StorageFactory) *App {
@@ -132,6 +133,7 @@ func (a *App) OnUnlockWithTimeout(ctx context.Context, password, rpcURL string, 
 	a.DeleteGroup = usecase.NewDeleteGroupUseCase(a.groups, a.entries, a.vault)
 	a.PurgeGroup = usecase.NewPurgeGroupUseCase(a.groups, a.vault)
 	a.ListGroups = usecase.NewListGroupsUseCase(a.groups)
+	a.CloseProgram = usecase.NewCloseProgramUseCase(a.vault)
 
 	return nil
 }

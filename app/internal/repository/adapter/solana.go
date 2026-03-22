@@ -462,6 +462,40 @@ func (r *SolanaVaultRepo) DeployProgram(ctx context.Context, programBinary []byt
 	return nil
 }
 
+func (r *SolanaVaultRepo) CloseProgram(ctx context.Context) error {
+	tmpDir, err := os.MkdirTemp("", "solock-close-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(tmpDir)
+
+	deployerPath := filepath.Join(tmpDir, "deployer.json")
+	if err := writeKeypairJSON(deployerPath, r.owner); err != nil {
+		return err
+	}
+
+	solanaBin, err := exec.LookPath("solana")
+	if err != nil {
+		return fmt.Errorf("solana CLI not found: %w", err)
+	}
+
+	cmd := exec.CommandContext(ctx, solanaBin, "program", "close",
+		r.programID.String(),
+		"--keypair", deployerPath,
+		"--url", r.rpcURL,
+		"--bypass-warning",
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		msg := strings.TrimSpace(string(output))
+		if len(msg) > 500 {
+			msg = msg[:500]
+		}
+		return fmt.Errorf("close: %s", msg)
+	}
+	return nil
+}
+
 func (r *SolanaVaultRepo) send(ctx context.Context, ix solana.Instruction) error {
 	bh, err := r.rpc.GetLatestBlockhash(ctx, rpc.CommitmentFinalized)
 	if err != nil {

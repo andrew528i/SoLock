@@ -30,6 +30,9 @@ const (
 	screenSync
 	screenConfig
 	screenConfirm
+	screenGroupList
+	screenGroupAdd
+	screenGroupEdit
 )
 
 type logEntry struct {
@@ -77,6 +80,10 @@ type App struct {
 	groupFilter   int // -1 = all, -2 = ungrouped, >=0 = group index
 	groupMap      map[uint32]*domain.Group
 
+	groupCursor    int
+	groupNameInput textinput.Model
+	editingGroup   *domain.Group
+
 	typeCursor      int
 	entryFormType   domain.EntryType
 	entryFormFields []formField
@@ -103,6 +110,7 @@ type balanceMsg struct{ balance uint64; err error }
 type deployStatusMsg struct{ deployed bool; err error }
 type vaultStatusMsg struct{ exists bool; err error }
 type deployResultMsg struct{ err error }
+type closeProgramMsg struct{ err error }
 type syncDoneMsg struct{ err error }
 type entriesLoadedMsg struct{ entries []*domain.Entry; err error }
 type entryPushedMsg struct{ err error; onChain bool }
@@ -132,17 +140,24 @@ func NewTUI(app *application.App) *App {
 	si.Width = 30
 	si.Prompt = ""
 
+	gi := textinput.New()
+	gi.Placeholder = "Group name"
+	gi.Width = 40
+	gi.Prompt = ""
+	gi.CharLimit = 64
+
 	return &App{
-		app:           app,
-		screen:        screenUnlock,
-		passwordInput: ti,
-		spinner:       sp,
-		progress:      prog,
-		searchInput:   si,
-		network:       "devnet",
-		rpcURL:        "https://api.devnet.solana.com",
-		groupFilter:   -1,
-		groupMap:      make(map[uint32]*domain.Group),
+		app:            app,
+		screen:         screenUnlock,
+		passwordInput:  ti,
+		spinner:        sp,
+		progress:       prog,
+		searchInput:    si,
+		groupNameInput: gi,
+		network:        "devnet",
+		rpcURL:         "https://api.devnet.solana.com",
+		groupFilter:    -1,
+		groupMap:       make(map[uint32]*domain.Group),
 	}
 }
 
@@ -211,6 +226,17 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.addLog("Program deployed")
 		}
 		return a, tea.Batch(a.checkBalance(), a.checkDeployStatus())
+
+	case closeProgramMsg:
+		a.loading = false
+		if msg.err != nil {
+			a.addLog("Close failed: " + msg.err.Error())
+		} else {
+			a.programDeployed = false
+			a.vaultExists = false
+			a.addLog("Program closed, SOL returned")
+		}
+		return a, tea.Batch(a.checkBalance(), a.checkDeployStatus(), a.checkVaultStatus())
 
 	case initVaultMsg:
 		a.loading = false
@@ -328,6 +354,10 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a.updateConfig(msg)
 	case screenConfirm:
 		return a.updateConfirm(msg)
+	case screenGroupList:
+		return a.updateGroupList(msg)
+	case screenGroupAdd, screenGroupEdit:
+		return a.updateGroupForm(msg)
 	}
 	return a, nil
 }
@@ -352,6 +382,10 @@ func (a *App) View() string {
 		return a.viewConfig()
 	case screenConfirm:
 		return a.viewConfirm()
+	case screenGroupList:
+		return a.viewGroupList()
+	case screenGroupAdd, screenGroupEdit:
+		return a.viewGroupForm()
 	}
 	return ""
 }
@@ -510,6 +544,11 @@ func (a *App) updateDashboard(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return a, nil
 		case "c":
 			a.screen = screenConfig
+			return a, nil
+		case "G":
+			a.refreshGroups()
+			a.groupCursor = 0
+			a.screen = screenGroupList
 			return a, nil
 		}
 	}
@@ -842,6 +881,19 @@ func (a *App) updateConfig(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "n":
 			a.toggleNetwork()
 			return a, nil
+		case "X":
+			if !a.programDeployed {
+				a.addLog("Program not deployed")
+				return a, nil
+			}
+			a.confirmMsg = "CLOSE program on-chain? SOL will be returned. All data will be lost!"
+			a.prev = screenConfig
+			a.confirmAction = func() tea.Cmd {
+				a.addLog("Closing program...")
+				return a.closeProgram()
+			}
+			a.screen = screenConfirm
+			return a, nil
 		}
 	}
 	return a, nil
@@ -956,6 +1008,18 @@ func (a *App) deployProgram() tea.Cmd {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
 		return deployResultMsg{err: uc.Execute(ctx)}
+	}
+}
+
+func (a *App) closeProgram() tea.Cmd {
+	uc := a.app.CloseProgram
+	return func() tea.Msg {
+		if uc == nil {
+			return closeProgramMsg{err: fmt.Errorf("not connected")}
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		return closeProgramMsg{err: uc.Execute(ctx)}
 	}
 }
 
