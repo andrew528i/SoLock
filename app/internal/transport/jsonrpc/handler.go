@@ -72,6 +72,16 @@ func (h *Handler) Handle(req *Request) *Response {
 		return h.handleGetConfig(req)
 	case "set_config":
 		return h.handleSetConfig(req)
+	case "list_groups":
+		return h.handleListGroups(req)
+	case "add_group":
+		return h.handleAddGroup(req)
+	case "update_group":
+		return h.handleUpdateGroup(req)
+	case "delete_group":
+		return h.handleDeleteGroup(req)
+	case "purge_group":
+		return h.handlePurgeGroup(req)
 	case "shutdown":
 		return h.handleShutdown(req)
 	default:
@@ -177,9 +187,10 @@ func (h *Handler) handleSearchEntries(req *Request) *Response {
 
 func (h *Handler) handleAddEntry(req *Request) *Response {
 	var params struct {
-		Type   string            `json:"type"`
-		Name   string            `json:"name"`
-		Fields map[string]string `json:"fields"`
+		Type       string            `json:"type"`
+		Name       string            `json:"name"`
+		Fields     map[string]string `json:"fields"`
+		GroupIndex *uint32           `json:"group_index,omitempty"`
 	}
 	if err := json.Unmarshal(req.Params, &params); err != nil {
 		return errorResponse(req.ID, ErrCodeParse, "invalid params")
@@ -189,6 +200,9 @@ func (h *Handler) handleAddEntry(req *Request) *Response {
 	entry, err := domain.NewEntry(id, domain.EntryType(params.Type), params.Name, params.Fields)
 	if err != nil {
 		return errorResponse(req.ID, ErrCodeInvalidReq, err.Error())
+	}
+	if params.GroupIndex != nil {
+		entry.SetGroupIndex(params.GroupIndex)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -206,9 +220,11 @@ func (h *Handler) handleAddEntry(req *Request) *Response {
 
 func (h *Handler) handleUpdateEntry(req *Request) *Response {
 	var params struct {
-		ID     string            `json:"id"`
-		Name   string            `json:"name"`
-		Fields map[string]string `json:"fields"`
+		ID         string            `json:"id"`
+		Name       string            `json:"name"`
+		Fields     map[string]string `json:"fields"`
+		GroupIndex *uint32           `json:"group_index"`
+		ClearGroup bool              `json:"clear_group"`
 	}
 	if err := json.Unmarshal(req.Params, &params); err != nil {
 		return errorResponse(req.ID, ErrCodeParse, "invalid params")
@@ -227,6 +243,11 @@ func (h *Handler) handleUpdateEntry(req *Request) *Response {
 	}
 	if params.Fields != nil {
 		entry.SetFields(params.Fields)
+	}
+	if params.ClearGroup {
+		entry.SetGroupIndex(nil)
+	} else if params.GroupIndex != nil {
+		entry.SetGroupIndex(params.GroupIndex)
 	}
 
 	result, err := h.app.UpdateEntry.Execute(ctx, entry)
@@ -285,6 +306,7 @@ func (h *Handler) handleGetDashboard(req *Request) *Response {
 		"note_count":       info.NoteCount,
 		"card_count":       info.CardCount,
 		"totp_count":       info.TOTPCount,
+		"group_count":      info.GroupCount,
 		"last_sync_at":     info.LastSyncAt.Unix(),
 		"network":          info.Network,
 		"rpc_url":          info.RPCURL,
@@ -436,27 +458,151 @@ func (h *Handler) handleShutdown(req *Request) *Response {
 	return successResponse(req.ID, map[string]bool{"ok": true})
 }
 
+func (h *Handler) handleListGroups(req *Request) *Response {
+	if h.app.ListGroups == nil {
+		return errorResponse(req.ID, ErrCodeInternal, "not connected")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	groups, err := h.app.ListGroups.Execute(ctx)
+	if err != nil {
+		return errorResponse(req.ID, ErrCodeInternal, err.Error())
+	}
+	return successResponse(req.ID, groupsToJSON(groups))
+}
+
+func (h *Handler) handleAddGroup(req *Request) *Response {
+	var params struct {
+		Name string `json:"name"`
+	}
+	if err := json.Unmarshal(req.Params, &params); err != nil {
+		return errorResponse(req.ID, ErrCodeParse, "invalid params")
+	}
+	if h.app.AddGroup == nil {
+		return errorResponse(req.ID, ErrCodeInternal, "not connected")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	result, err := h.app.AddGroup.Execute(ctx, params.Name)
+	if err != nil {
+		return errorResponse(req.ID, ErrCodeInternal, err.Error())
+	}
+	return successResponse(req.ID, map[string]any{
+		"index":    result.Group.Index(),
+		"on_chain": result.OnChain,
+	})
+}
+
+func (h *Handler) handleUpdateGroup(req *Request) *Response {
+	var params struct {
+		Index uint32 `json:"index"`
+		Name  string `json:"name"`
+	}
+	if err := json.Unmarshal(req.Params, &params); err != nil {
+		return errorResponse(req.ID, ErrCodeParse, "invalid params")
+	}
+	if h.app.UpdateGroup == nil {
+		return errorResponse(req.ID, ErrCodeInternal, "not connected")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	target, err := h.app.Groups().Get(ctx, params.Index)
+	if err != nil {
+		return errorResponse(req.ID, ErrCodeInternal, err.Error())
+	}
+	if target == nil {
+		return errorResponse(req.ID, ErrCodeInternal, "group not found")
+	}
+
+	target.SetName(params.Name)
+	result, err := h.app.UpdateGroup.Execute(ctx, target)
+	if err != nil {
+		return errorResponse(req.ID, ErrCodeInternal, err.Error())
+	}
+	return successResponse(req.ID, map[string]any{
+		"ok":       true,
+		"on_chain": result.OnChain,
+	})
+}
+
+func (h *Handler) handleDeleteGroup(req *Request) *Response {
+	var params struct {
+		Index         uint32 `json:"index"`
+		DeleteEntries bool   `json:"delete_entries"`
+	}
+	if err := json.Unmarshal(req.Params, &params); err != nil {
+		return errorResponse(req.ID, ErrCodeParse, "invalid params")
+	}
+	if h.app.DeleteGroup == nil {
+		return errorResponse(req.ID, ErrCodeInternal, "not connected")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	result, err := h.app.DeleteGroup.Execute(ctx, params.Index, params.DeleteEntries)
+	if err != nil {
+		return errorResponse(req.ID, ErrCodeInternal, err.Error())
+	}
+	return successResponse(req.ID, map[string]any{
+		"ok":       true,
+		"on_chain": result.OnChain,
+	})
+}
+
+func (h *Handler) handlePurgeGroup(req *Request) *Response {
+	var params struct {
+		Index uint32 `json:"index"`
+	}
+	if err := json.Unmarshal(req.Params, &params); err != nil {
+		return errorResponse(req.ID, ErrCodeParse, "invalid params")
+	}
+	if h.app.PurgeGroup == nil {
+		return errorResponse(req.ID, ErrCodeInternal, "not connected")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	result, err := h.app.PurgeGroup.Execute(ctx, params.Index)
+	if err != nil {
+		return errorResponse(req.ID, ErrCodeInternal, err.Error())
+	}
+	return successResponse(req.ID, map[string]any{
+		"ok":       true,
+		"on_chain": result.OnChain,
+	})
+}
+
 type entryJSON struct {
-	ID        string            `json:"id"`
-	Type      string            `json:"type"`
-	Name      string            `json:"name"`
-	Fields    map[string]string `json:"fields"`
-	HasTOTP   bool              `json:"has_totp"`
-	SlotIndex uint32            `json:"slot_index"`
-	CreatedAt int64             `json:"created_at"`
-	UpdatedAt int64             `json:"updated_at"`
+	ID         string            `json:"id"`
+	Type       string            `json:"type"`
+	Name       string            `json:"name"`
+	Fields     map[string]string `json:"fields"`
+	HasTOTP    bool              `json:"has_totp"`
+	SlotIndex  uint32            `json:"slot_index"`
+	GroupIndex *uint32           `json:"group_index,omitempty"`
+	CreatedAt  int64             `json:"created_at"`
+	UpdatedAt  int64             `json:"updated_at"`
 }
 
 func entryToJSON(e *domain.Entry) *entryJSON {
 	return &entryJSON{
-		ID:        e.ID(),
-		Type:      string(e.Type()),
-		Name:      e.Name(),
-		Fields:    e.Fields(),
-		HasTOTP:   e.HasTOTP(),
-		SlotIndex: e.SlotIndex(),
-		CreatedAt: e.CreatedAt().Unix(),
-		UpdatedAt: e.UpdatedAt().Unix(),
+		ID:         e.ID(),
+		Type:       string(e.Type()),
+		Name:       e.Name(),
+		Fields:     e.Fields(),
+		HasTOTP:    e.HasTOTP(),
+		SlotIndex:  e.SlotIndex(),
+		GroupIndex: e.GroupIndex(),
+		CreatedAt:  e.CreatedAt().Unix(),
+		UpdatedAt:  e.UpdatedAt().Unix(),
 	}
 }
 
@@ -464,6 +610,32 @@ func entriesToJSON(entries []*domain.Entry) []*entryJSON {
 	result := make([]*entryJSON, 0, len(entries))
 	for _, e := range entries {
 		result = append(result, entryToJSON(e))
+	}
+	return result
+}
+
+type groupJSON2 struct {
+	Index     uint32 `json:"index"`
+	Name      string `json:"name"`
+	Deleted   bool   `json:"deleted"`
+	CreatedAt int64  `json:"created_at"`
+	UpdatedAt int64  `json:"updated_at"`
+}
+
+func groupToJSON(g *domain.Group) *groupJSON2 {
+	return &groupJSON2{
+		Index:     g.Index(),
+		Name:      g.Name(),
+		Deleted:   g.Deleted(),
+		CreatedAt: g.CreatedAt().Unix(),
+		UpdatedAt: g.UpdatedAt().Unix(),
+	}
+}
+
+func groupsToJSON(groups []*domain.Group) []*groupJSON2 {
+	result := make([]*groupJSON2, 0, len(groups))
+	for _, g := range groups {
+		result = append(result, groupToJSON(g))
 	}
 	return result
 }

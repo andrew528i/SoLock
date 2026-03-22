@@ -424,6 +424,83 @@ JsonNode *solock_client_status(SolockClient *c, GError **error)
     return solock_client_call(c, "status", NULL, error);
 }
 
+JsonNode *solock_client_list_groups(SolockClient *c, GError **error)
+{
+    return solock_client_call(c, "list_groups", NULL, error);
+}
+
+gboolean solock_client_add_group(SolockClient *c, const char *name, GError **error)
+{
+    JsonBuilder *b = json_builder_new();
+    json_builder_begin_object(b);
+    json_builder_set_member_name(b, "name");
+    json_builder_add_string_value(b, name);
+    json_builder_end_object(b);
+    JsonNode *params = json_builder_get_root(b);
+
+    JsonNode *result = solock_client_call(c, "add_group", params, error);
+    json_node_unref(params);
+    g_object_unref(b);
+    gboolean ok = result != NULL;
+    if (result) json_node_unref(result);
+    return ok;
+}
+
+gboolean solock_client_update_group(SolockClient *c, int index, const char *name, GError **error)
+{
+    JsonBuilder *b = json_builder_new();
+    json_builder_begin_object(b);
+    json_builder_set_member_name(b, "index");
+    json_builder_add_int_value(b, index);
+    json_builder_set_member_name(b, "name");
+    json_builder_add_string_value(b, name);
+    json_builder_end_object(b);
+    JsonNode *params = json_builder_get_root(b);
+
+    JsonNode *result = solock_client_call(c, "update_group", params, error);
+    json_node_unref(params);
+    g_object_unref(b);
+    gboolean ok = result != NULL;
+    if (result) json_node_unref(result);
+    return ok;
+}
+
+gboolean solock_client_delete_group(SolockClient *c, int index, gboolean delete_entries, GError **error)
+{
+    JsonBuilder *b = json_builder_new();
+    json_builder_begin_object(b);
+    json_builder_set_member_name(b, "index");
+    json_builder_add_int_value(b, index);
+    json_builder_set_member_name(b, "delete_entries");
+    json_builder_add_boolean_value(b, delete_entries);
+    json_builder_end_object(b);
+    JsonNode *params = json_builder_get_root(b);
+
+    JsonNode *result = solock_client_call(c, "delete_group", params, error);
+    json_node_unref(params);
+    g_object_unref(b);
+    gboolean ok = result != NULL;
+    if (result) json_node_unref(result);
+    return ok;
+}
+
+gboolean solock_client_purge_group(SolockClient *c, int index, GError **error)
+{
+    JsonBuilder *b = json_builder_new();
+    json_builder_begin_object(b);
+    json_builder_set_member_name(b, "index");
+    json_builder_add_int_value(b, index);
+    json_builder_end_object(b);
+    JsonNode *params = json_builder_get_root(b);
+
+    JsonNode *result = solock_client_call(c, "purge_group", params, error);
+    json_node_unref(params);
+    g_object_unref(b);
+    gboolean ok = result != NULL;
+    if (result) json_node_unref(result);
+    return ok;
+}
+
 void solock_client_shutdown(SolockClient *c)
 {
     solock_client_call(c, "shutdown", NULL, NULL);

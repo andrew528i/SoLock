@@ -29,6 +29,11 @@ gboolean      solock_client_add_entry(SolockClient *client, const char *type, co
 gboolean      solock_client_update_entry(SolockClient *client, const char *id, const char *name, JsonNode *fields, GError **error);
 gboolean      solock_client_delete_entry(SolockClient *client, const char *id, GError **error);
 gboolean      solock_client_sync(SolockClient *client, GError **error);
+JsonNode     *solock_client_list_groups(SolockClient *client, GError **error);
+gboolean      solock_client_add_group(SolockClient *client, const char *name, GError **error);
+gboolean      solock_client_update_group(SolockClient *client, int index, const char *name, GError **error);
+gboolean      solock_client_delete_group(SolockClient *client, int index, gboolean delete_entries, GError **error);
+gboolean      solock_client_purge_group(SolockClient *client, int index, GError **error);
 gboolean      solock_client_deploy_program(SolockClient *client, GError **error);
 gboolean      solock_client_init_vault(SolockClient *client, GError **error);
 char         *solock_client_generate_password(SolockClient *client, int length, gboolean uppercase, gboolean digits, gboolean special, GError **error);
@@ -78,6 +83,9 @@ GtkWidget    *solock_dashboard_view_new(SolockApp *app);
 
 /* vault_view.h */
 GtkWidget    *solock_vault_view_new(SolockApp *app);
+
+/* groups_view.h */
+GtkWidget    *solock_groups_view_new(SolockApp *app);
 
 /* entry_editor.h */
 GtkWidget    *solock_entry_editor_new(SolockApp *app, JsonNode *entry);

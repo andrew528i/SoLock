@@ -149,6 +149,9 @@ func (a *App) viewVault() string {
 		header += "  " + dimStyle.Render(fmt.Sprintf("%d entries", len(a.entries)))
 		header += "  " + dimStyle.Render("sort:"+sortLabels[a.sortMode])
 	}
+	if a.groupFilter != groupFilterAll {
+		header += "  " + labelStyle.Render("group:"+a.groupFilterLabel())
+	}
 	lines = append(lines, "", header)
 
 	if a.searching {
@@ -206,6 +209,15 @@ func (a *App) viewVault() string {
 			line += col(entry.Name(), colName, nStyle)
 			line += col(user, colUser, dimStyle)
 
+			gn := a.groupName(entry.GroupIndex())
+			if gn != "" {
+				if gn == "[deleted]" {
+					line += dangerStyle.Render("x") + " "
+				} else {
+					line += dimStyle.Render(gn) + " "
+				}
+			}
+
 			if entry.HasTOTP() {
 				line += warningStyle.Render("2FA") + " "
 			}
@@ -227,7 +239,7 @@ func (a *App) viewVault() string {
 	lines = append(lines, "", a.loadingLine())
 	lines = append(lines, helpBar(
 		helpKey("hjkl", "nav"), helpKey("/", "search"), helpKey("s", "sort"),
-		helpKey("a", "add"), helpKey("d", "dup"), helpKey("x", "del"),
+		helpKey("g", "group"), helpKey("a", "add"), helpKey("d", "dup"), helpKey("x", "del"),
 	))
 	return strings.Join(lines, "\n") + "\n"
 }
@@ -239,7 +251,16 @@ func (a *App) viewEntryDetail() string {
 	entry := a.selectedEntry
 	var lines []string
 
-	lines = append(lines, "", "  "+titleStyle.Render(entry.Name())+"  "+dimStyle.Render(entry.Type().Label()), "")
+	groupLabel := ""
+	gn := a.groupName(entry.GroupIndex())
+	if gn != "" {
+		if gn == "[deleted]" {
+			groupLabel = "  " + dangerStyle.Render(gn)
+		} else {
+			groupLabel = "  " + dimStyle.Render(gn)
+		}
+	}
+	lines = append(lines, "", "  "+titleStyle.Render(entry.Name())+"  "+dimStyle.Render(entry.Type().Label())+groupLabel, "")
 
 	schema := entry.Schema()
 	if schema != nil {

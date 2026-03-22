@@ -8,13 +8,14 @@ import (
 )
 
 type Entry struct {
-	id        string
-	slotIndex uint32
-	entryType EntryType
-	name      string
-	fields    map[string]string
-	createdAt time.Time
-	updatedAt time.Time
+	id         string
+	slotIndex  uint32
+	entryType  EntryType
+	name       string
+	fields     map[string]string
+	groupIndex *uint32
+	createdAt  time.Time
+	updatedAt  time.Time
 }
 
 func NewEntry(id string, entryType EntryType, name string, fields map[string]string) (*Entry, error) {
@@ -53,6 +54,7 @@ func (e *Entry) ID() string            { return e.id }
 func (e *Entry) SlotIndex() uint32     { return e.slotIndex }
 func (e *Entry) Type() EntryType       { return e.entryType }
 func (e *Entry) Name() string          { return e.name }
+func (e *Entry) GroupIndex() *uint32   { return e.groupIndex }
 func (e *Entry) CreatedAt() time.Time  { return e.createdAt }
 func (e *Entry) UpdatedAt() time.Time  { return e.updatedAt }
 func (e *Entry) Schema() *EntrySchema  { return SchemaFor(e.entryType) }
@@ -71,6 +73,11 @@ func (e *Entry) Fields() map[string]string {
 
 func (e *Entry) SetSlotIndex(idx uint32) {
 	e.slotIndex = idx
+}
+
+func (e *Entry) SetGroupIndex(idx *uint32) {
+	e.groupIndex = idx
+	e.updatedAt = time.Now().UTC()
 }
 
 func (e *Entry) SetOnChainTimestamps(createdAt, updatedAt int64) {
@@ -150,24 +157,26 @@ func (e *Entry) Validate() error {
 }
 
 type entryJSON struct {
-	ID        string            `json:"id"`
-	SlotIndex uint32            `json:"slot_index"`
-	Type      EntryType         `json:"type"`
-	Name      string            `json:"name"`
-	Fields    map[string]string `json:"fields"`
-	CreatedAt time.Time         `json:"created_at"`
-	UpdatedAt time.Time         `json:"updated_at"`
+	ID         string            `json:"id"`
+	SlotIndex  uint32            `json:"slot_index"`
+	Type       EntryType         `json:"type"`
+	Name       string            `json:"name"`
+	Fields     map[string]string `json:"fields"`
+	GroupIndex *uint32           `json:"group_index,omitempty"`
+	CreatedAt  time.Time         `json:"created_at"`
+	UpdatedAt  time.Time         `json:"updated_at"`
 }
 
 func (e *Entry) MarshalJSON() ([]byte, error) {
 	return json.Marshal(entryJSON{
-		ID:        e.id,
-		SlotIndex: e.slotIndex,
-		Type:      e.entryType,
-		Name:      e.name,
-		Fields:    e.fields,
-		CreatedAt: e.createdAt,
-		UpdatedAt: e.updatedAt,
+		ID:         e.id,
+		SlotIndex:  e.slotIndex,
+		Type:       e.entryType,
+		Name:       e.name,
+		Fields:     e.fields,
+		GroupIndex: e.groupIndex,
+		CreatedAt:  e.createdAt,
+		UpdatedAt:  e.updatedAt,
 	})
 }
 
@@ -181,6 +190,7 @@ func (e *Entry) UnmarshalJSON(data []byte) error {
 	e.entryType = j.Type
 	e.name = j.Name
 	e.fields = j.Fields
+	e.groupIndex = j.GroupIndex
 	e.createdAt = j.CreatedAt
 	e.updatedAt = j.UpdatedAt
 	if e.fields == nil {

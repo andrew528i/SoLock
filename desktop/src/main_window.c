@@ -6,13 +6,15 @@ typedef struct {
     GtkWindow *window;
 } MainWindowData;
 
-static const char *section_names[] = { "vault", "dashboard", "settings" };
-static const char *section_titles[] = { "Vault", "Dashboard", "Settings" };
+static const char *section_names[] = { "vault", "groups", "dashboard", "settings" };
+static const char *section_titles[] = { "Vault", "Groups", "Dashboard", "Settings" };
 static const char *sidebar_icon_names[] = {
     "dialog-password-symbolic",
+    "folder-symbolic",
     "utilities-system-monitor-symbolic",
     "preferences-system-symbolic"
 };
+static const int section_count = 4;
 
 static void on_sidebar_row_selected(GtkListBox *list, GtkListBoxRow *row, gpointer data)
 {
@@ -20,7 +22,7 @@ static void on_sidebar_row_selected(GtkListBox *list, GtkListBoxRow *row, gpoint
     MainWindowData *mwd = data;
     if (!row) return;
     int idx = gtk_list_box_row_get_index(row);
-    if (idx >= 0 && idx < 3) {
+    if (idx >= 0 && idx < section_count) {
         gtk_stack_set_visible_child_name(mwd->stack, section_names[idx]);
         adw_window_title_set_title(ADW_WINDOW_TITLE(mwd->content_title),
                                    section_titles[idx]);
@@ -51,7 +53,7 @@ GtkWidget *solock_main_window_new(SolockApp *app)
     gtk_list_box_set_selection_mode(GTK_LIST_BOX(sidebar_list), GTK_SELECTION_SINGLE);
     gtk_widget_set_vexpand(sidebar_list, TRUE);
 
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < section_count; i++) {
         GtkWidget *row_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
         gtk_widget_set_margin_start(row_box, 14);
         gtk_widget_set_margin_end(row_box, 14);
@@ -88,6 +90,9 @@ GtkWidget *solock_main_window_new(SolockApp *app)
 
     GtkWidget *vault = solock_vault_view_new(app);
     gtk_stack_add_named(GTK_STACK(content_stack), vault, "vault");
+
+    GtkWidget *groups = solock_groups_view_new(app);
+    gtk_stack_add_named(GTK_STACK(content_stack), groups, "groups");
 
     GtkWidget *dashboard = solock_dashboard_view_new(app);
     gtk_stack_add_named(GTK_STACK(content_stack), dashboard, "dashboard");

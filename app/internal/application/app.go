@@ -13,7 +13,7 @@ import (
 )
 
 type VaultRepoFactory func(keys *domain.DerivedKeys, rpcURL string) domain.VaultRepository
-type StorageFactory func(dbPath string, crypto domain.CryptoService) (domain.EntryRepository, domain.ConfigRepository, domain.SyncStateRepository, error)
+type StorageFactory func(dbPath string, crypto domain.CryptoService) (domain.EntryRepository, domain.GroupRepository, domain.ConfigRepository, domain.SyncStateRepository, error)
 
 type App struct {
 	dataDir          string
@@ -25,6 +25,7 @@ type App struct {
 	keys      *domain.DerivedKeys
 	crypto    domain.CryptoService
 	entries   domain.EntryRepository
+	groups    domain.GroupRepository
 	config    domain.ConfigRepository
 	syncState domain.SyncStateRepository
 	vault     domain.VaultRepository
@@ -52,6 +53,11 @@ type App struct {
 	SetConfig          *usecase.SetConfigUseCase
 	GetPassGenConfig   *usecase.GetPassGenConfigUseCase
 	SavePassGenConfig  *usecase.SavePassGenConfigUseCase
+	AddGroup           *usecase.AddGroupUseCase
+	UpdateGroup        *usecase.UpdateGroupUseCase
+	DeleteGroup        *usecase.DeleteGroupUseCase
+	PurgeGroup         *usecase.PurgeGroupUseCase
+	ListGroups         *usecase.ListGroupsUseCase
 }
 
 func New(dataDir string, vaultFactory VaultRepoFactory, storageFactory StorageFactory) *App {
@@ -87,11 +93,12 @@ func (a *App) OnUnlockWithTimeout(ctx context.Context, password, rpcURL string, 
 	}
 
 	dbPath := filepath.Join(a.dataDir, "vault.db")
-	entries, config, syncState, err := a.storageFactory(dbPath, a.crypto)
+	entries, groups, config, syncState, err := a.storageFactory(dbPath, a.crypto)
 	if err != nil {
 		return fmt.Errorf("open storage: %w", err)
 	}
 	a.entries = entries
+	a.groups = groups
 	a.config = config
 	a.syncState = syncState
 
@@ -104,11 +111,11 @@ func (a *App) OnUnlockWithTimeout(ctx context.Context, password, rpcURL string, 
 	a.AddEntry = usecase.NewAddEntryUseCase(a.entries, a.vault, a.syncState, a.crypto)
 	a.UpdateEntry = usecase.NewUpdateEntryUseCase(a.entries, a.vault, a.crypto)
 	a.DeleteEntry = usecase.NewDeleteEntryUseCase(a.entries, a.vault)
-	a.Sync = usecase.NewSyncUseCase(a.entries, a.vault, a.syncState, a.crypto)
+	a.Sync = usecase.NewSyncUseCase(a.entries, a.groups, a.vault, a.syncState, a.crypto)
 	a.ListEntries = usecase.NewListEntriesUseCase(a.entries)
 	a.SearchEntries = usecase.NewSearchEntriesUseCase(a.entries)
 	a.GetEntry = usecase.NewGetEntryUseCase(a.entries)
-	a.GetDashboard = usecase.NewGetDashboardUseCase(a.vault, a.entries, a.config, a.syncState, a.keys)
+	a.GetDashboard = usecase.NewGetDashboardUseCase(a.vault, a.entries, a.groups, a.config, a.syncState, a.keys)
 	a.DeployProgram = usecase.NewDeployProgramUseCase(a.vault, a.keys)
 	a.InitVault = usecase.NewInitVaultUseCase(a.vault)
 	a.ResetVault = usecase.NewResetVaultUseCase(a.vault)
@@ -120,6 +127,11 @@ func (a *App) OnUnlockWithTimeout(ctx context.Context, password, rpcURL string, 
 	a.SetConfig = usecase.NewSetConfigUseCase(a.config)
 	a.GetPassGenConfig = usecase.NewGetPassGenConfigUseCase(a.config)
 	a.SavePassGenConfig = usecase.NewSavePassGenConfigUseCase(a.config)
+	a.AddGroup = usecase.NewAddGroupUseCase(a.groups, a.vault, a.crypto)
+	a.UpdateGroup = usecase.NewUpdateGroupUseCase(a.groups, a.vault, a.crypto)
+	a.DeleteGroup = usecase.NewDeleteGroupUseCase(a.groups, a.entries, a.vault)
+	a.PurgeGroup = usecase.NewPurgeGroupUseCase(a.groups, a.vault)
+	a.ListGroups = usecase.NewListGroupsUseCase(a.groups)
 
 	return nil
 }
@@ -158,6 +170,7 @@ func (a *App) ExpiresAt() time.Time {
 
 func (a *App) Keys() *domain.DerivedKeys            { return a.keys }
 func (a *App) Entries() domain.EntryRepository       { return a.entries }
+func (a *App) Groups() domain.GroupRepository        { return a.groups }
 func (a *App) Config() domain.ConfigRepository       { return a.config }
 func (a *App) SyncState() domain.SyncStateRepository { return a.syncState }
 func (a *App) Vault() domain.VaultRepository         { return a.vault }

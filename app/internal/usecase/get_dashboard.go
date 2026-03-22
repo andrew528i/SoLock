@@ -18,6 +18,7 @@ type DashboardInfo struct {
 	NoteCount       int
 	CardCount       int
 	TOTPCount       int
+	GroupCount      int
 	LastSyncAt      time.Time
 	Network         string
 	RPCURL          string
@@ -26,6 +27,7 @@ type DashboardInfo struct {
 type GetDashboardUseCase struct {
 	vault     domain.VaultRepository
 	entries   domain.EntryRepository
+	groups    domain.GroupRepository
 	config    domain.ConfigRepository
 	syncState domain.SyncStateRepository
 	keys      *domain.DerivedKeys
@@ -34,6 +36,7 @@ type GetDashboardUseCase struct {
 func NewGetDashboardUseCase(
 	vault domain.VaultRepository,
 	entries domain.EntryRepository,
+	groups domain.GroupRepository,
 	config domain.ConfigRepository,
 	syncState domain.SyncStateRepository,
 	keys *domain.DerivedKeys,
@@ -41,6 +44,7 @@ func NewGetDashboardUseCase(
 	return &GetDashboardUseCase{
 		vault:     vault,
 		entries:   entries,
+		groups:    groups,
 		config:    config,
 		syncState: syncState,
 		keys:      keys,
@@ -80,6 +84,15 @@ func (uc *GetDashboardUseCase) Execute(ctx context.Context) (*DashboardInfo, err
 			}
 			if e.HasTOTP() {
 				info.TOTPCount++
+			}
+		}
+	}
+
+	if uc.groups != nil {
+		groups, _ := uc.groups.List(ctx)
+		for _, g := range groups {
+			if !g.Deleted() {
+				info.GroupCount++
 			}
 		}
 	}

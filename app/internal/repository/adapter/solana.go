@@ -51,6 +51,15 @@ func (r *SolanaVaultRepo) entryPDA(index uint32) (solana.PublicKey, uint8, error
 	)
 }
 
+func (r *SolanaVaultRepo) groupPDA(index uint32) (solana.PublicKey, uint8, error) {
+	indexBytes := make([]byte, 4)
+	binary.LittleEndian.PutUint32(indexBytes, index)
+	return solana.FindProgramAddress(
+		[][]byte{[]byte("group_v2"), r.owner.PublicKey().Bytes(), indexBytes},
+		r.programID,
+	)
+}
+
 func (r *SolanaVaultRepo) discriminator(name string) []byte {
 	h := sha256.Sum256([]byte("global:" + name))
 	return h[:8]
@@ -188,6 +197,150 @@ func (r *SolanaVaultRepo) DeleteEntry(ctx context.Context, index uint32) error {
 		},
 		DataBytes: r.discriminator("delete_entry"),
 	})
+}
+
+func (r *SolanaVaultRepo) AddGroup(ctx context.Context, index uint32, data []byte) error {
+	vaultPDA, _, err := r.vaultPDA()
+	if err != nil {
+		return err
+	}
+	groupPDA, _, err := r.groupPDA(index)
+	if err != nil {
+		return err
+	}
+
+	var buf bytes.Buffer
+	buf.Write(r.discriminator("add_group"))
+	binary.Write(&buf, binary.LittleEndian, index)
+	binary.Write(&buf, binary.LittleEndian, uint32(len(data)))
+	buf.Write(data)
+
+	return r.send(ctx, &solana.GenericInstruction{
+		ProgID: r.programID,
+		AccountValues: solana.AccountMetaSlice{
+			{PublicKey: r.owner.PublicKey(), IsSigner: true, IsWritable: true},
+			{PublicKey: vaultPDA, IsSigner: false, IsWritable: true},
+			{PublicKey: groupPDA, IsSigner: false, IsWritable: true},
+			{PublicKey: solana.SystemProgramID, IsSigner: false, IsWritable: false},
+		},
+		DataBytes: buf.Bytes(),
+	})
+}
+
+func (r *SolanaVaultRepo) UpdateGroup(ctx context.Context, index uint32, data []byte) error {
+	vaultPDA, _, err := r.vaultPDA()
+	if err != nil {
+		return err
+	}
+	groupPDA, _, err := r.groupPDA(index)
+	if err != nil {
+		return err
+	}
+
+	var buf bytes.Buffer
+	buf.Write(r.discriminator("update_group"))
+	binary.Write(&buf, binary.LittleEndian, uint32(len(data)))
+	buf.Write(data)
+
+	return r.send(ctx, &solana.GenericInstruction{
+		ProgID: r.programID,
+		AccountValues: solana.AccountMetaSlice{
+			{PublicKey: r.owner.PublicKey(), IsSigner: true, IsWritable: true},
+			{PublicKey: vaultPDA, IsSigner: false, IsWritable: false},
+			{PublicKey: groupPDA, IsSigner: false, IsWritable: true},
+			{PublicKey: solana.SystemProgramID, IsSigner: false, IsWritable: false},
+		},
+		DataBytes: buf.Bytes(),
+	})
+}
+
+func (r *SolanaVaultRepo) DeleteGroup(ctx context.Context, index uint32) error {
+	vaultPDA, _, err := r.vaultPDA()
+	if err != nil {
+		return err
+	}
+	groupPDA, _, err := r.groupPDA(index)
+	if err != nil {
+		return err
+	}
+
+	return r.send(ctx, &solana.GenericInstruction{
+		ProgID: r.programID,
+		AccountValues: solana.AccountMetaSlice{
+			{PublicKey: r.owner.PublicKey(), IsSigner: true, IsWritable: true},
+			{PublicKey: vaultPDA, IsSigner: false, IsWritable: true},
+			{PublicKey: groupPDA, IsSigner: false, IsWritable: true},
+			{PublicKey: solana.SystemProgramID, IsSigner: false, IsWritable: false},
+		},
+		DataBytes: r.discriminator("delete_group"),
+	})
+}
+
+func (r *SolanaVaultRepo) PurgeGroup(ctx context.Context, index uint32) error {
+	vaultPDA, _, err := r.vaultPDA()
+	if err != nil {
+		return err
+	}
+	groupPDA, _, err := r.groupPDA(index)
+	if err != nil {
+		return err
+	}
+
+	return r.send(ctx, &solana.GenericInstruction{
+		ProgID: r.programID,
+		AccountValues: solana.AccountMetaSlice{
+			{PublicKey: r.owner.PublicKey(), IsSigner: true, IsWritable: true},
+			{PublicKey: vaultPDA, IsSigner: false, IsWritable: false},
+			{PublicKey: groupPDA, IsSigner: false, IsWritable: true},
+			{PublicKey: solana.SystemProgramID, IsSigner: false, IsWritable: false},
+		},
+		DataBytes: r.discriminator("purge_group"),
+	})
+}
+
+func (r *SolanaVaultRepo) GetGroup(ctx context.Context, index uint32) (*domain.GroupAccount, error) {
+	pda, _, err := r.groupPDA(index)
+	if err != nil {
+		return nil, err
+	}
+	info, err := r.rpc.GetAccountInfo(ctx, pda)
+	if err != nil || info == nil || info.Value == nil {
+		return nil, nil
+	}
+	return r.parseGroupAccount(info.Value.Data.GetBinary(), index)
+}
+
+func (r *SolanaVaultRepo) GetGroupsBatch(ctx context.Context, indices []uint32) (map[uint32]*domain.GroupAccount, error) {
+	if len(indices) == 0 {
+		return nil, nil
+	}
+
+	pubkeys := make([]solana.PublicKey, len(indices))
+	for i, idx := range indices {
+		pda, _, err := r.groupPDA(idx)
+		if err != nil {
+			return nil, err
+		}
+		pubkeys[i] = pda
+	}
+
+	result, err := r.rpc.GetMultipleAccounts(ctx, pubkeys...)
+	if err != nil {
+		return nil, err
+	}
+
+	groups := make(map[uint32]*domain.GroupAccount)
+	for i, acc := range result.Value {
+		if acc == nil {
+			continue
+		}
+		group, err := r.parseGroupAccount(acc.Data.GetBinary(), indices[i])
+		if err != nil {
+			continue
+		}
+		groups[indices[i]] = group
+	}
+	return groups, nil
 }
 
 func (r *SolanaVaultRepo) GetEntry(ctx context.Context, index uint32) (*domain.EntryAccount, error) {
@@ -378,6 +531,10 @@ func (r *SolanaVaultRepo) parseVaultMeta(data []byte) (*domain.VaultMeta, error)
 			d = d[4:]
 		}
 	}
+	if len(d) >= 8 {
+		meta.NextGroupIndex = binary.LittleEndian.Uint32(d[:4])
+		meta.GroupCount = binary.LittleEndian.Uint32(d[4:8])
+	}
 	return meta, nil
 }
 
@@ -404,6 +561,33 @@ func (r *SolanaVaultRepo) parseEntryAccount(data []byte) (*domain.EntryAccount, 
 		EncryptedData: encData,
 		CreatedAt:     int64(binary.LittleEndian.Uint64(d[:8])),
 		UpdatedAt:     int64(binary.LittleEndian.Uint64(d[8:16])),
+	}, nil
+}
+
+func (r *SolanaVaultRepo) parseGroupAccount(data []byte, index uint32) (*domain.GroupAccount, error) {
+	// discriminator(8) + owner(32) + index(4) + vec_len(4) + ... + deleted(1) + bump(1)
+	if len(data) < 8+32+4+4 {
+		return nil, errors.New("invalid group account")
+	}
+	d := data[8+32:]
+	_ = binary.LittleEndian.Uint32(d[:4]) // index from on-chain
+	d = d[4:]
+	vecLen := binary.LittleEndian.Uint32(d[:4])
+	d = d[4:]
+	if len(d) < int(vecLen) {
+		return nil, errors.New("invalid group data length")
+	}
+	encData := make([]byte, vecLen)
+	copy(encData, d[:vecLen])
+	d = d[vecLen:]
+	if len(d) < 2 {
+		return nil, errors.New("invalid group tail")
+	}
+	deleted := d[0] != 0
+	return &domain.GroupAccount{
+		Index:         index,
+		EncryptedData: encData,
+		Deleted:       deleted,
 	}, nil
 }
 

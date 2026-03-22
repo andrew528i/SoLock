@@ -82,7 +82,7 @@ func newApp(dataDir string) *application.App {
 	vaultFactory := func(keys *domain.DerivedKeys, rpcURL string) domain.VaultRepository {
 		return adapter.NewSolanaVaultRepo(keys, rpcURL)
 	}
-	storageFactory := func(dbPath string, crypto domain.CryptoService) (domain.EntryRepository, domain.ConfigRepository, domain.SyncStateRepository, error) {
+	storageFactory := func(dbPath string, crypto domain.CryptoService) (domain.EntryRepository, domain.GroupRepository, domain.ConfigRepository, domain.SyncStateRepository, error) {
 		return storage.NewRepositories(dbPath, crypto)
 	}
 	return application.New(dataDir, vaultFactory, storageFactory)

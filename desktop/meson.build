@@ -20,6 +20,7 @@ sources = files(
   'src/main_window.c',
   'src/dashboard.c',
   'src/vault_view.c',
+  'src/groups_view.c',
   'src/entry_editor.c',
   'src/settings.c',
   'src/tray.c',

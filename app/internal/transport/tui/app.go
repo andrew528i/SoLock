@@ -73,6 +73,10 @@ type App struct {
 	searching     bool
 	sortMode      int
 
+	groups        []*domain.Group
+	groupFilter   int // -1 = all, -2 = ungrouped, >=0 = group index
+	groupMap      map[uint32]*domain.Group
+
 	typeCursor      int
 	entryFormType   domain.EntryType
 	entryFormFields []formField
@@ -137,6 +141,8 @@ func NewTUI(app *application.App) *App {
 		searchInput:   si,
 		network:       "devnet",
 		rpcURL:        "https://api.devnet.solana.com",
+		groupFilter:   -1,
+		groupMap:      make(map[uint32]*domain.Group),
 	}
 }
 
@@ -246,6 +252,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				a.entryCursor = len(a.entries) - 1
 			}
 		}
+		a.refreshGroups()
 		return a, nil
 
 	case entryPushedMsg:
@@ -565,6 +572,10 @@ func (a *App) updateVault(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.sortMode = (a.sortMode + 1) % sortModeCount
 			a.entryCursor = 0
 			a.addLog("Sort: " + sortLabels[a.sortMode])
+			return a, nil
+		case "g":
+			a.cycleGroupFilter()
+			a.addLog("Group: " + a.groupFilterLabel())
 			return a, nil
 		case "d":
 			if len(visible) > 0 && a.entryCursor < len(visible) {

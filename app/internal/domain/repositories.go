@@ -12,6 +12,14 @@ type EntryRepository interface {
 	ClearAll(ctx context.Context) error
 }
 
+type GroupRepository interface {
+	Save(ctx context.Context, group *Group) error
+	Get(ctx context.Context, index uint32) (*Group, error)
+	Delete(ctx context.Context, index uint32) error
+	List(ctx context.Context) ([]*Group, error)
+	ClearAll(ctx context.Context) error
+}
+
 type ConfigRepository interface {
 	Set(ctx context.Context, key, value string) error
 	Get(ctx context.Context, key string) (string, error)
@@ -32,6 +40,12 @@ type VaultRepository interface {
 	DeleteEntry(ctx context.Context, index uint32) error
 	GetEntry(ctx context.Context, index uint32) (*EntryAccount, error)
 	GetEntriesBatch(ctx context.Context, indices []uint32) (map[uint32]*EntryAccount, error)
+	AddGroup(ctx context.Context, index uint32, data []byte) error
+	UpdateGroup(ctx context.Context, index uint32, data []byte) error
+	DeleteGroup(ctx context.Context, index uint32) error
+	PurgeGroup(ctx context.Context, index uint32) error
+	GetGroup(ctx context.Context, index uint32) (*GroupAccount, error)
+	GetGroupsBatch(ctx context.Context, indices []uint32) (map[uint32]*GroupAccount, error)
 	IsProgramDeployed(ctx context.Context) (bool, error)
 	GetBalance(ctx context.Context) (uint64, error)
 	DeployProgram(ctx context.Context, programBinary []byte) error

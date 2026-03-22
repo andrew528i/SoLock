@@ -21,6 +21,7 @@ type SyncProgressFunc func(SyncProgress)
 
 type SyncUseCase struct {
 	entries   domain.EntryRepository
+	groups    domain.GroupRepository
 	vault     domain.VaultRepository
 	syncState domain.SyncStateRepository
 	crypto    domain.CryptoService
@@ -28,12 +29,14 @@ type SyncUseCase struct {
 
 func NewSyncUseCase(
 	entries domain.EntryRepository,
+	groups domain.GroupRepository,
 	vault domain.VaultRepository,
 	syncState domain.SyncStateRepository,
 	crypto domain.CryptoService,
 ) *SyncUseCase {
 	return &SyncUseCase{
 		entries:   entries,
+		groups:    groups,
 		vault:     vault,
 		syncState: syncState,
 		crypto:    crypto,
@@ -50,6 +53,10 @@ func (uc *SyncUseCase) Execute(ctx context.Context, onProgress SyncProgressFunc)
 	meta, err := uc.vault.GetMeta(ctx)
 	if err != nil {
 		return fmt.Errorf("get vault meta: %w", err)
+	}
+
+	if err := uc.syncGroups(ctx, meta, onProgress); err != nil {
+		return fmt.Errorf("sync groups: %w", err)
 	}
 
 	nextIndex := meta.NextIndex
@@ -137,6 +144,30 @@ func (uc *SyncUseCase) resetAndRepush(ctx context.Context, onProgress SyncProgre
 		return fmt.Errorf("reset vault: %w", err)
 	}
 
+	localGroups, err := uc.groups.List(ctx)
+	if err != nil {
+		return fmt.Errorf("list local groups: %w", err)
+	}
+
+	if len(localGroups) > 0 {
+		onProgress(SyncProgress{Phase: "Pushing local groups...", Total: len(localGroups)})
+		for i, group := range localGroups {
+			if err := ctx.Err(); err != nil {
+				return fmt.Errorf("cancelled pushing groups after %d/%d", i, len(localGroups))
+			}
+			group.SetIndex(uint32(i))
+			encrypted, err := uc.encryptGroup(group)
+			if err != nil {
+				return fmt.Errorf("encrypt group %d: %w", i, err)
+			}
+			if err := uc.vault.AddGroup(ctx, uint32(i), encrypted); err != nil {
+				return fmt.Errorf("push group %d: %w", i, err)
+			}
+			uc.groups.Save(ctx, group)
+			onProgress(SyncProgress{Phase: "Pushing local groups...", Current: i + 1, Total: len(localGroups)})
+		}
+	}
+
 	localEntries, err := uc.entries.List(ctx)
 	if err != nil {
 		return fmt.Errorf("list local: %w", err)
@@ -202,6 +233,83 @@ func (uc *SyncUseCase) decryptEntry(encrypted []byte) (*domain.Entry, error) {
 		return nil, err
 	}
 	return &entry, nil
+}
+
+func (uc *SyncUseCase) syncGroups(ctx context.Context, meta *domain.VaultMeta, onProgress SyncProgressFunc) error {
+	nextGroupIndex := meta.NextGroupIndex
+	if nextGroupIndex == 0 {
+		return nil
+	}
+
+	total := int(nextGroupIndex)
+	onProgress(SyncProgress{Phase: "Fetching groups...", Total: total})
+
+	remoteIndices := make(map[uint32]bool)
+	fetched := 0
+
+	for start := uint32(0); start < nextGroupIndex; start += syncBatchSize {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+
+		end := min(start+syncBatchSize, nextGroupIndex)
+		indices := makeRange(start, end)
+
+		accounts, err := uc.vault.GetGroupsBatch(ctx, indices)
+		if err != nil {
+			return fmt.Errorf("fetch group batch %d-%d: %w", start, end, err)
+		}
+
+		for idx, account := range accounts {
+			remoteIndices[idx] = true
+
+			group, err := uc.decryptGroup(account.EncryptedData)
+			if err != nil {
+				continue
+			}
+			group.SetIndex(idx)
+			group.SetDeleted(account.Deleted)
+
+			if err := uc.groups.Save(ctx, group); err != nil {
+				return fmt.Errorf("save group %d: %w", idx, err)
+			}
+		}
+
+		fetched += len(indices)
+		onProgress(SyncProgress{Phase: "Fetching groups...", Current: fetched, Total: total})
+	}
+
+	localGroups, err := uc.groups.List(ctx)
+	if err != nil {
+		return fmt.Errorf("list local groups: %w", err)
+	}
+	for _, g := range localGroups {
+		if g.Index() < nextGroupIndex && !remoteIndices[g.Index()] {
+			uc.groups.Delete(ctx, g.Index())
+		}
+	}
+
+	return nil
+}
+
+func (uc *SyncUseCase) encryptGroup(group *domain.Group) ([]byte, error) {
+	data, err := json.Marshal(group)
+	if err != nil {
+		return nil, err
+	}
+	return uc.crypto.Encrypt(data)
+}
+
+func (uc *SyncUseCase) decryptGroup(encrypted []byte) (*domain.Group, error) {
+	decrypted, err := uc.crypto.Decrypt(encrypted)
+	if err != nil {
+		return nil, err
+	}
+	var group domain.Group
+	if err := json.Unmarshal(decrypted, &group); err != nil {
+		return nil, err
+	}
+	return &group, nil
 }
 
 func makeRange(start, end uint32) []uint32 {

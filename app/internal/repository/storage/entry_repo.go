@@ -118,7 +118,7 @@ func (r *EntryRepo) MarkSynced(ctx context.Context, id string) error {
 }
 
 func (r *EntryRepo) ClearAll(ctx context.Context) error {
-	for _, table := range []string{"entries", "config", "sync_state"} {
+	for _, table := range []string{"entries", "groups", "config", "sync_state"} {
 		query, args, err := sq.Delete(table).ToSql()
 		if err != nil {
 			return err

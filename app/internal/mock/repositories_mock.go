@@ -142,6 +142,102 @@ func (mr *MockEntryRepositoryMockRecorder) Save(ctx, entry any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockEntryRepository)(nil).Save), ctx, entry)
 }
 
+// MockGroupRepository is a mock of GroupRepository interface.
+type MockGroupRepository struct {
+	ctrl     *gomock.Controller
+	recorder *MockGroupRepositoryMockRecorder
+	isgomock struct{}
+}
+
+// MockGroupRepositoryMockRecorder is the mock recorder for MockGroupRepository.
+type MockGroupRepositoryMockRecorder struct {
+	mock *MockGroupRepository
+}
+
+// NewMockGroupRepository creates a new mock instance.
+func NewMockGroupRepository(ctrl *gomock.Controller) *MockGroupRepository {
+	mock := &MockGroupRepository{ctrl: ctrl}
+	mock.recorder = &MockGroupRepositoryMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockGroupRepository) EXPECT() *MockGroupRepositoryMockRecorder {
+	return m.recorder
+}
+
+// ClearAll mocks base method.
+func (m *MockGroupRepository) ClearAll(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClearAll", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ClearAll indicates an expected call of ClearAll.
+func (mr *MockGroupRepositoryMockRecorder) ClearAll(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearAll", reflect.TypeOf((*MockGroupRepository)(nil).ClearAll), ctx)
+}
+
+// Delete mocks base method.
+func (m *MockGroupRepository) Delete(ctx context.Context, index uint32) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Delete", ctx, index)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockGroupRepositoryMockRecorder) Delete(ctx, index any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockGroupRepository)(nil).Delete), ctx, index)
+}
+
+// Get mocks base method.
+func (m *MockGroupRepository) Get(ctx context.Context, index uint32) (*domain.Group, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Get", ctx, index)
+	ret0, _ := ret[0].(*domain.Group)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Get indicates an expected call of Get.
+func (mr *MockGroupRepositoryMockRecorder) Get(ctx, index any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockGroupRepository)(nil).Get), ctx, index)
+}
+
+// List mocks base method.
+func (m *MockGroupRepository) List(ctx context.Context) ([]*domain.Group, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "List", ctx)
+	ret0, _ := ret[0].([]*domain.Group)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// List indicates an expected call of List.
+func (mr *MockGroupRepositoryMockRecorder) List(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockGroupRepository)(nil).List), ctx)
+}
+
+// Save mocks base method.
+func (m *MockGroupRepository) Save(ctx context.Context, group *domain.Group) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Save", ctx, group)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Save indicates an expected call of Save.
+func (mr *MockGroupRepositoryMockRecorder) Save(ctx, group any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockGroupRepository)(nil).Save), ctx, group)
+}
+
 // MockConfigRepository is a mock of ConfigRepository interface.
 type MockConfigRepository struct {
 	ctrl     *gomock.Controller
@@ -286,6 +382,20 @@ func (mr *MockVaultRepositoryMockRecorder) AddEntry(ctx, index, data any) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddEntry", reflect.TypeOf((*MockVaultRepository)(nil).AddEntry), ctx, index, data)
 }
 
+// AddGroup mocks base method.
+func (m *MockVaultRepository) AddGroup(ctx context.Context, index uint32, data []byte) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddGroup", ctx, index, data)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AddGroup indicates an expected call of AddGroup.
+func (mr *MockVaultRepositoryMockRecorder) AddGroup(ctx, index, data any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddGroup", reflect.TypeOf((*MockVaultRepository)(nil).AddGroup), ctx, index, data)
+}
+
 // DeleteEntry mocks base method.
 func (m *MockVaultRepository) DeleteEntry(ctx context.Context, index uint32) error {
 	m.ctrl.T.Helper()
@@ -298,6 +408,20 @@ func (m *MockVaultRepository) DeleteEntry(ctx context.Context, index uint32) err
 func (mr *MockVaultRepositoryMockRecorder) DeleteEntry(ctx, index any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteEntry", reflect.TypeOf((*MockVaultRepository)(nil).DeleteEntry), ctx, index)
+}
+
+// DeleteGroup mocks base method.
+func (m *MockVaultRepository) DeleteGroup(ctx context.Context, index uint32) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteGroup", ctx, index)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteGroup indicates an expected call of DeleteGroup.
+func (mr *MockVaultRepositoryMockRecorder) DeleteGroup(ctx, index any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteGroup", reflect.TypeOf((*MockVaultRepository)(nil).DeleteGroup), ctx, index)
 }
 
 // DeployProgram mocks base method.
@@ -374,6 +498,36 @@ func (mr *MockVaultRepositoryMockRecorder) GetEntry(ctx, index any) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEntry", reflect.TypeOf((*MockVaultRepository)(nil).GetEntry), ctx, index)
 }
 
+// GetGroup mocks base method.
+func (m *MockVaultRepository) GetGroup(ctx context.Context, index uint32) (*domain.GroupAccount, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetGroup", ctx, index)
+	ret0, _ := ret[0].(*domain.GroupAccount)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetGroup indicates an expected call of GetGroup.
+func (mr *MockVaultRepositoryMockRecorder) GetGroup(ctx, index any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetGroup", reflect.TypeOf((*MockVaultRepository)(nil).GetGroup), ctx, index)
+}
+
+// GetGroupsBatch mocks base method.
+func (m *MockVaultRepository) GetGroupsBatch(ctx context.Context, indices []uint32) (map[uint32]*domain.GroupAccount, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetGroupsBatch", ctx, indices)
+	ret0, _ := ret[0].(map[uint32]*domain.GroupAccount)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetGroupsBatch indicates an expected call of GetGroupsBatch.
+func (mr *MockVaultRepositoryMockRecorder) GetGroupsBatch(ctx, indices any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetGroupsBatch", reflect.TypeOf((*MockVaultRepository)(nil).GetGroupsBatch), ctx, indices)
+}
+
 // GetMeta mocks base method.
 func (m *MockVaultRepository) GetMeta(ctx context.Context) (*domain.VaultMeta, error) {
 	m.ctrl.T.Helper()
@@ -418,6 +572,20 @@ func (mr *MockVaultRepositoryMockRecorder) IsProgramDeployed(ctx any) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsProgramDeployed", reflect.TypeOf((*MockVaultRepository)(nil).IsProgramDeployed), ctx)
 }
 
+// PurgeGroup mocks base method.
+func (m *MockVaultRepository) PurgeGroup(ctx context.Context, index uint32) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PurgeGroup", ctx, index)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PurgeGroup indicates an expected call of PurgeGroup.
+func (mr *MockVaultRepositoryMockRecorder) PurgeGroup(ctx, index any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PurgeGroup", reflect.TypeOf((*MockVaultRepository)(nil).PurgeGroup), ctx, index)
+}
+
 // Reset mocks base method.
 func (m *MockVaultRepository) Reset(ctx context.Context) error {
 	m.ctrl.T.Helper()
@@ -444,4 +612,18 @@ func (m *MockVaultRepository) UpdateEntry(ctx context.Context, index uint32, dat
 func (mr *MockVaultRepositoryMockRecorder) UpdateEntry(ctx, index, data, expectedUpdatedAt any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateEntry", reflect.TypeOf((*MockVaultRepository)(nil).UpdateEntry), ctx, index, data, expectedUpdatedAt)
+}
+
+// UpdateGroup mocks base method.
+func (m *MockVaultRepository) UpdateGroup(ctx context.Context, index uint32, data []byte) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateGroup", ctx, index, data)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateGroup indicates an expected call of UpdateGroup.
+func (mr *MockVaultRepositoryMockRecorder) UpdateGroup(ctx, index, data any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateGroup", reflect.TypeOf((*MockVaultRepository)(nil).UpdateGroup), ctx, index, data)
 }

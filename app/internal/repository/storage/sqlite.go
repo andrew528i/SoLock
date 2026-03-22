@@ -52,6 +52,11 @@ func (s *SQLite) migrate() error {
 			updated_at INTEGER NOT NULL,
 			synced INTEGER NOT NULL DEFAULT 0
 		);
+		CREATE TABLE IF NOT EXISTS groups (
+			idx INTEGER PRIMARY KEY,
+			encrypted_data BLOB NOT NULL,
+			deleted INTEGER NOT NULL DEFAULT 0
+		);
 		CREATE TABLE IF NOT EXISTS sync_state (
 			key TEXT PRIMARY KEY,
 			value BLOB NOT NULL
@@ -69,10 +74,10 @@ func (s *SQLite) decrypt(data []byte) ([]byte, error) {
 	return s.crypto.Decrypt(data)
 }
 
-func NewRepositories(dbPath string, crypto domain.CryptoService) (domain.EntryRepository, domain.ConfigRepository, domain.SyncStateRepository, error) {
+func NewRepositories(dbPath string, crypto domain.CryptoService) (domain.EntryRepository, domain.GroupRepository, domain.ConfigRepository, domain.SyncStateRepository, error) {
 	s, err := Open(dbPath, crypto)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
-	return &EntryRepo{s: s}, &ConfigRepo{s: s}, &SyncStateRepo{s: s}, nil
+	return &EntryRepo{s: s}, &GroupRepo{s: s}, &ConfigRepo{s: s}, &SyncStateRepo{s: s}, nil
 }
