@@ -20,18 +20,20 @@ import (
 )
 
 type SolanaVaultRepo struct {
-	rpc       *rpc.Client
-	owner     solana.PrivateKey
-	programID solana.PublicKey
-	rpcURL    string
+	rpc            *rpc.Client
+	owner          solana.PrivateKey
+	programID      solana.PublicKey
+	programKeypair solana.PrivateKey
+	rpcURL         string
 }
 
 func NewSolanaVaultRepo(keys *domain.DerivedKeys, rpcURL string) domain.VaultRepository {
 	return &SolanaVaultRepo{
-		rpc:       rpc.New(rpcURL),
-		owner:     solana.PrivateKey(keys.DeployerKeypair),
-		programID: solana.PublicKeyFromBytes(keys.ProgramKeypair[32:]),
-		rpcURL:    rpcURL,
+		rpc:            rpc.New(rpcURL),
+		owner:          solana.PrivateKey(keys.DeployerKeypair),
+		programID:      solana.PublicKeyFromBytes(keys.ProgramKeypair[32:]),
+		programKeypair: solana.PrivateKey(keys.ProgramKeypair),
+		rpcURL:         rpcURL,
 	}
 }
 
@@ -426,9 +428,7 @@ func (r *SolanaVaultRepo) DeployProgram(ctx context.Context, programBinary []byt
 	if err := writeKeypairJSON(deployerPath, r.owner); err != nil {
 		return err
 	}
-	programKP := make(solana.PrivateKey, 64)
-	copy(programKP, r.programID.Bytes())
-	if err := writeKeypairJSON(programPath, programKP); err != nil {
+	if err := writeKeypairJSON(programPath, r.programKeypair); err != nil {
 		return err
 	}
 
