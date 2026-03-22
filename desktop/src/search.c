@@ -12,12 +12,166 @@ typedef struct {
     SolockApp  *app;
     GtkWidget  *search_revealer;
     GtkWidget  *search_entry;
+    GtkWidget  *group_bar;
+    GtkWidget  *group_scroll;
     GtkWidget  *list_box;
     JsonNode   *entries;
+    JsonNode   *groups;
+    int         active_group; /* -1 = all */
     gboolean    label_mode;
 } SearchData;
 
 static void refresh_entries(SearchData *sd);
+static void rebuild_group_bar(SearchData *sd);
+
+static void on_group_chip_clicked(GtkButton *btn, gpointer data)
+{
+    SearchData *sd = data;
+    sd->active_group = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(btn), "group-idx"));
+    rebuild_group_bar(sd);
+    refresh_entries(sd);
+}
+
+static void rebuild_group_bar(SearchData *sd)
+{
+    GtkWidget *child;
+    while ((child = gtk_widget_get_first_child(sd->group_bar)))
+        gtk_box_remove(GTK_BOX(sd->group_bar), child);
+
+    if (sd->groups)
+        json_node_unref(sd->groups);
+    sd->groups = NULL;
+
+    SolockClient *client = solock_app_get_client(sd->app);
+    sd->groups = solock_client_list_groups(client, NULL);
+
+    int active_count = 0;
+    if (sd->groups && JSON_NODE_TYPE(sd->groups) == JSON_NODE_ARRAY) {
+        JsonArray *arr = json_node_get_array(sd->groups);
+        for (guint i = 0; i < json_array_get_length(arr); i++) {
+            JsonObject *obj = json_array_get_object_element(arr, i);
+            if (!json_object_get_boolean_member(obj, "deleted"))
+                active_count++;
+        }
+    }
+
+    if (active_count == 0) {
+        gtk_widget_set_visible(sd->group_scroll, FALSE);
+        sd->active_group = -1;
+        return;
+    }
+
+    gtk_widget_set_visible(sd->group_scroll, TRUE);
+
+    GtkWidget *all_btn = gtk_button_new_with_label("All");
+    gtk_widget_add_css_class(all_btn, "flat");
+    gtk_widget_add_css_class(all_btn, "group-chip");
+    if (sd->active_group == -1)
+        gtk_widget_add_css_class(all_btn, "group-chip-active");
+    g_object_set_data(G_OBJECT(all_btn), "group-idx", GINT_TO_POINTER(-1));
+    g_signal_connect(all_btn, "clicked", G_CALLBACK(on_group_chip_clicked), sd);
+    gtk_box_append(GTK_BOX(sd->group_bar), all_btn);
+
+    JsonArray *arr = json_node_get_array(sd->groups);
+    for (guint i = 0; i < json_array_get_length(arr); i++) {
+        JsonObject *obj = json_array_get_object_element(arr, i);
+        if (json_object_get_boolean_member(obj, "deleted"))
+            continue;
+
+        const char *name = json_object_get_string_member(obj, "name");
+        int index = (int)json_object_get_int_member(obj, "index");
+
+        GtkWidget *btn = gtk_button_new_with_label(name);
+        gtk_widget_add_css_class(btn, "flat");
+        gtk_widget_add_css_class(btn, "group-chip");
+        gtk_label_set_ellipsize(
+            GTK_LABEL(gtk_button_get_child(GTK_BUTTON(btn))),
+            PANGO_ELLIPSIZE_END);
+        gtk_label_set_max_width_chars(
+            GTK_LABEL(gtk_button_get_child(GTK_BUTTON(btn))), 16);
+        if (sd->active_group == index)
+            gtk_widget_add_css_class(btn, "group-chip-active");
+        g_object_set_data(G_OBJECT(btn), "group-idx", GINT_TO_POINTER(index));
+        g_signal_connect(btn, "clicked", G_CALLBACK(on_group_chip_clicked), sd);
+        gtk_box_append(GTK_BOX(sd->group_bar), btn);
+    }
+}
+
+static void cycle_group_forward(SearchData *sd)
+{
+    if (!sd->groups || JSON_NODE_TYPE(sd->groups) != JSON_NODE_ARRAY)
+        return;
+
+    JsonArray *arr = json_node_get_array(sd->groups);
+    guint len = json_array_get_length(arr);
+    if (len == 0) return;
+
+    if (sd->active_group == -1) {
+        for (guint i = 0; i < len; i++) {
+            JsonObject *obj = json_array_get_object_element(arr, i);
+            if (!json_object_get_boolean_member(obj, "deleted")) {
+                sd->active_group = (int)json_object_get_int_member(obj, "index");
+                break;
+            }
+        }
+    } else {
+        gboolean found = FALSE;
+        gboolean pick_next = FALSE;
+        for (guint i = 0; i < len; i++) {
+            JsonObject *obj = json_array_get_object_element(arr, i);
+            if (json_object_get_boolean_member(obj, "deleted"))
+                continue;
+            int idx = (int)json_object_get_int_member(obj, "index");
+            if (pick_next) {
+                sd->active_group = idx;
+                found = TRUE;
+                break;
+            }
+            if (idx == sd->active_group)
+                pick_next = TRUE;
+        }
+        if (!found)
+            sd->active_group = -1;
+    }
+
+    rebuild_group_bar(sd);
+    refresh_entries(sd);
+}
+
+static void cycle_group_backward(SearchData *sd)
+{
+    if (!sd->groups || JSON_NODE_TYPE(sd->groups) != JSON_NODE_ARRAY)
+        return;
+
+    JsonArray *arr = json_node_get_array(sd->groups);
+    guint len = json_array_get_length(arr);
+    if (len == 0) return;
+
+    if (sd->active_group == -1) {
+        for (int i = (int)len - 1; i >= 0; i--) {
+            JsonObject *obj = json_array_get_object_element(arr, (guint)i);
+            if (!json_object_get_boolean_member(obj, "deleted")) {
+                sd->active_group = (int)json_object_get_int_member(obj, "index");
+                break;
+            }
+        }
+    } else {
+        int prev = -1;
+        for (guint i = 0; i < len; i++) {
+            JsonObject *obj = json_array_get_object_element(arr, i);
+            if (json_object_get_boolean_member(obj, "deleted"))
+                continue;
+            int idx = (int)json_object_get_int_member(obj, "index");
+            if (idx == sd->active_group)
+                break;
+            prev = idx;
+        }
+        sd->active_group = prev;
+    }
+
+    rebuild_group_bar(sd);
+    refresh_entries(sd);
+}
 
 static const char *icon_for_type(const char *type)
 {
@@ -136,6 +290,16 @@ static gboolean on_key_pressed(GtkEventControllerKey *ctrl, guint keyval,
             activate_entry_at_index(sd, idx);
             return TRUE;
         }
+    }
+
+    if (keyval == GDK_KEY_Tab && !(state & GDK_SHIFT_MASK)) {
+        cycle_group_forward(sd);
+        return TRUE;
+    }
+    if ((keyval == GDK_KEY_Tab && (state & GDK_SHIFT_MASK)) ||
+        keyval == GDK_KEY_ISO_Left_Tab) {
+        cycle_group_backward(sd);
+        return TRUE;
     }
 
     if (keyval == GDK_KEY_Escape) {
@@ -276,8 +440,17 @@ static void refresh_entries(SearchData *sd)
     JsonArray *arr = json_node_get_array(sd->entries);
     guint len = json_array_get_length(arr);
 
+    guint visible_count = 0;
     for (guint i = 0; i < len; i++) {
         JsonObject *obj = json_array_get_object_element(arr, i);
+
+        if (sd->active_group >= 0) {
+            if (!json_object_has_member(obj, "group_index") ||
+                json_object_get_null_member(obj, "group_index") ||
+                (int)json_object_get_int_member(obj, "group_index") != sd->active_group) {
+                continue;
+            }
+        }
         const char *name = json_object_get_string_member(obj, "name");
         const char *type = json_object_get_string_member(obj, "type");
         gboolean has_totp = json_object_get_boolean_member_with_default(obj, "has_totp", FALSE);
@@ -355,9 +528,10 @@ static void refresh_entries(SearchData *sd)
         }
 
         gtk_list_box_append(GTK_LIST_BOX(sd->list_box), row_box);
+        visible_count++;
     }
 
-    if (len == 0) {
+    if (visible_count == 0) {
         if (gtk_revealer_get_reveal_child(GTK_REVEALER(sd->search_revealer))) {
             GtkWidget *no_results = gtk_label_new("No results");
             gtk_widget_add_css_class(no_results, "dim-label");
@@ -399,6 +573,7 @@ static void on_view_map(GtkWidget *widget, gpointer data)
     sd->label_mode = FALSE;
     gtk_editable_set_text(GTK_EDITABLE(sd->search_entry), "");
     gtk_revealer_set_reveal_child(GTK_REVEALER(sd->search_revealer), FALSE);
+    rebuild_group_bar(sd);
     refresh_entries(sd);
     gtk_widget_grab_focus(sd->list_box);
 }
@@ -421,6 +596,20 @@ GtkWidget *solock_search_view_new(SolockApp *app)
     gtk_revealer_set_child(GTK_REVEALER(search_revealer), search_entry);
     gtk_box_append(GTK_BOX(box), search_revealer);
 
+    GtkWidget *group_scroll = gtk_scrolled_window_new();
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(group_scroll),
+                                   GTK_POLICY_AUTOMATIC, GTK_POLICY_NEVER);
+    gtk_widget_set_size_request(group_scroll, -1, -1);
+
+    GtkWidget *group_bar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);
+    gtk_widget_set_margin_start(group_bar, 8);
+    gtk_widget_set_margin_end(group_bar, 8);
+    gtk_widget_set_margin_top(group_bar, 4);
+    gtk_widget_set_margin_bottom(group_bar, 2);
+    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(group_scroll), group_bar);
+    gtk_widget_set_visible(group_scroll, FALSE);
+    gtk_box_append(GTK_BOX(box), group_scroll);
+
     GtkWidget *scroll = gtk_scrolled_window_new();
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
     gtk_scrolled_window_set_max_content_height(GTK_SCROLLED_WINDOW(scroll), 320);
@@ -439,8 +628,12 @@ GtkWidget *solock_search_view_new(SolockApp *app)
     sd->app = app;
     sd->search_revealer = search_revealer;
     sd->search_entry = search_entry;
+    sd->group_bar = group_bar;
+    sd->group_scroll = group_scroll;
     sd->list_box = list_box;
     sd->entries = NULL;
+    sd->groups = NULL;
+    sd->active_group = -1;
     sd->label_mode = FALSE;
 
     g_signal_connect(search_entry, "search-changed", G_CALLBACK(on_search_changed), sd);

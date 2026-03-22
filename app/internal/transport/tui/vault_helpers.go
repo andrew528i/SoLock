@@ -23,17 +23,11 @@ var sortLabels = usecase.SortLabels
 
 func (a *App) visibleEntries() []*domain.Entry {
 	entries := a.entries
-	if a.groupFilter != groupFilterAll {
+	if a.groupFilter >= 0 {
 		var filtered []*domain.Entry
 		for _, e := range entries {
-			if a.groupFilter == groupFilterUngrouped {
-				if e.GroupIndex() == nil {
-					filtered = append(filtered, e)
-				}
-			} else {
-				if e.GroupIndex() != nil && int(*e.GroupIndex()) == a.groupFilter {
-					filtered = append(filtered, e)
-				}
+			if e.GroupIndex() != nil && int(*e.GroupIndex()) == a.groupFilter {
+				filtered = append(filtered, e)
 			}
 		}
 		entries = filtered
@@ -100,14 +94,10 @@ func (a *App) groupFilterLabel() string {
 
 func (a *App) cycleGroupFilter() {
 	active := a.activeGroups()
-	// cycle: all -> ungrouped -> group0 -> group1 -> ... -> all
+	// cycle: all -> group0 -> group1 -> ... -> all
 	if a.groupFilter == groupFilterAll {
-		a.groupFilter = groupFilterUngrouped
-	} else if a.groupFilter == groupFilterUngrouped {
 		if len(active) > 0 {
 			a.groupFilter = int(active[0].Index())
-		} else {
-			a.groupFilter = groupFilterAll
 		}
 	} else {
 		found := false
@@ -121,6 +111,26 @@ func (a *App) cycleGroupFilter() {
 		if !found {
 			a.groupFilter = groupFilterAll
 		}
+	}
+	a.entryCursor = 0
+}
+
+func (a *App) cycleGroupFilterBack() {
+	active := a.activeGroups()
+	if len(active) == 0 {
+		return
+	}
+	if a.groupFilter == groupFilterAll {
+		a.groupFilter = int(active[len(active)-1].Index())
+	} else {
+		prev := groupFilterAll
+		for _, g := range active {
+			if int(g.Index()) == a.groupFilter {
+				break
+			}
+			prev = int(g.Index())
+		}
+		a.groupFilter = prev
 	}
 	a.entryCursor = 0
 }

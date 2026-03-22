@@ -149,14 +149,43 @@ func (a *App) viewVault() string {
 		header += "  " + dimStyle.Render(fmt.Sprintf("%d entries", len(a.entries)))
 		header += "  " + dimStyle.Render("sort:"+sortLabels[a.sortMode])
 	}
-	if a.groupFilter != groupFilterAll {
-		header += "  " + labelStyle.Render("group:"+a.groupFilterLabel())
-	}
 	lines = append(lines, "", header)
 
 	if a.searching {
 		lines = append(lines, "  "+accentStyle.Render("/ ")+a.searchInput.View())
 	}
+
+	active := a.activeGroups()
+	if len(active) > 0 {
+		groupLine := "  "
+		maxWidth := max(a.width-6, 30)
+		lineLen := 2
+
+		if a.groupFilter == groupFilterAll {
+			groupLine += accentStyle.Render("[All]")
+			lineLen += 5
+		} else {
+			groupLine += dimStyle.Render(" All ")
+			lineLen += 5
+		}
+
+		for _, g := range active {
+			chip := " " + g.Name() + " "
+			chipLen := len(chip) + 2
+			if lineLen+chipLen > maxWidth {
+				groupLine += dimStyle.Render(" ...")
+				break
+			}
+			if a.groupFilter == int(g.Index()) {
+				groupLine += accentStyle.Render("[" + g.Name() + "]")
+			} else {
+				groupLine += dimStyle.Render(chip)
+			}
+			lineLen += chipLen
+		}
+		lines = append(lines, groupLine)
+	}
+
 	lines = append(lines, "")
 
 	if len(visible) == 0 {
@@ -239,7 +268,7 @@ func (a *App) viewVault() string {
 	lines = append(lines, "", a.loadingLine())
 	lines = append(lines, helpBar(
 		helpKey("hjkl", "nav"), helpKey("/", "search"), helpKey("s", "sort"),
-		helpKey("g", "group"), helpKey("a", "add"), helpKey("d", "dup"), helpKey("x", "del"),
+		helpKey("tab", "group"), helpKey("a", "add"), helpKey("d", "dup"), helpKey("x", "del"),
 	))
 	return strings.Join(lines, "\n") + "\n"
 }
@@ -362,6 +391,24 @@ func (a *App) viewEntryForm() string {
 		if a.entryFormFields[i].Generable && focused && a.passGenOpen {
 			lines = append(lines, a.renderPassGenPanel())
 		}
+	}
+
+	groupFieldIdx := a.entryFormGroupFieldIdx()
+	groupFocused := a.entryFormCursor == groupFieldIdx
+	groupLabel := a.entryFormGroupLabel()
+	groupLine := "  " + labelStyle.Render("Group")
+	if groupFocused {
+		groupLine += "  " + dimStyle.Render("<-/-> to change")
+	}
+	lines = append(lines, groupLine)
+	groupStyle := dimStyle
+	if groupFocused {
+		groupStyle = accentStyle
+	}
+	if groupLabel == "None" {
+		lines = append(lines, "  "+groupStyle.Render("  No group"))
+	} else {
+		lines = append(lines, "  "+groupStyle.Render("  "+groupLabel))
 	}
 
 	lines = append(lines, "", a.loadingLine())

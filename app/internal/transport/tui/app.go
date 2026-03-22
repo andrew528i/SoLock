@@ -93,6 +93,8 @@ type App struct {
 	entryFormCursor int
 	entryFormName   textinput.Model
 
+	entryFormGroupIdx int // -1 = no group, >=0 = index into activeGroups()
+
 	passGenConfig *domain.PasswordGenConfig
 	passGenOpen   bool
 	passGenCursor int
@@ -626,9 +628,11 @@ func (a *App) updateVault(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.entryCursor = 0
 			a.addLog("Sort: " + sortLabels[a.sortMode])
 			return a, nil
-		case "g":
+		case "g", "tab":
 			a.cycleGroupFilter()
-			a.addLog("Group: " + a.groupFilterLabel())
+			return a, nil
+		case "shift+tab":
+			a.cycleGroupFilterBack()
 			return a, nil
 		case "d":
 			if len(visible) > 0 && a.entryCursor < len(visible) {
@@ -752,7 +756,7 @@ func (a *App) updateEntryForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return a, nil
 			}
 		case "enter":
-			total := 1 + len(a.entryFormFields)
+			total := a.entryFormTotalFields()
 			if a.entryFormCursor == total-1 {
 				return a, a.saveEntryForm()
 			}
@@ -771,6 +775,17 @@ func (a *App) updateEntryForm(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var cmd tea.Cmd
 		a.entryFormName, cmd = a.entryFormName.Update(msg)
 		return a, cmd
+	}
+	if a.entryFormCursor == a.entryFormGroupFieldIdx() {
+		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+			switch keyMsg.String() {
+			case "left", "h":
+				a.cycleEntryGroupBack()
+			case "right", "l", " ":
+				a.cycleEntryGroupForward()
+			}
+		}
+		return a, nil
 	}
 	idx := a.entryFormCursor - 1
 	if idx < len(a.entryFormFields) {
@@ -1092,6 +1107,17 @@ func (a *App) initEntryForm(entryType domain.EntryType, existing *domain.Entry) 
 	}
 	a.entryFormName = nameInput
 
+	a.entryFormGroupIdx = -1
+	if existing != nil && existing.GroupIndex() != nil {
+		active := a.activeGroups()
+		for i, g := range active {
+			if g.Index() == *existing.GroupIndex() {
+				a.entryFormGroupIdx = i
+				break
+			}
+		}
+	}
+
 	schema := domain.SchemaFor(entryType)
 	if schema == nil {
 		return
@@ -1118,14 +1144,61 @@ func (a *App) initEntryForm(entryType domain.EntryType, existing *domain.Entry) 
 	}
 }
 
+func (a *App) entryFormTotalFields() int {
+	return 1 + len(a.entryFormFields) + 1 // name + fields + group
+}
+
+func (a *App) entryFormGroupFieldIdx() int {
+	return 1 + len(a.entryFormFields) // after all fields, before end
+}
+
+func (a *App) cycleEntryGroupForward() {
+	active := a.activeGroups()
+	if len(active) == 0 {
+		return
+	}
+	if a.entryFormGroupIdx < 0 {
+		a.entryFormGroupIdx = 0
+	} else if a.entryFormGroupIdx < len(active)-1 {
+		a.entryFormGroupIdx++
+	} else {
+		a.entryFormGroupIdx = -1
+	}
+}
+
+func (a *App) cycleEntryGroupBack() {
+	active := a.activeGroups()
+	if len(active) == 0 {
+		return
+	}
+	if a.entryFormGroupIdx < 0 {
+		a.entryFormGroupIdx = len(active) - 1
+	} else if a.entryFormGroupIdx > 0 {
+		a.entryFormGroupIdx--
+	} else {
+		a.entryFormGroupIdx = -1
+	}
+}
+
+func (a *App) entryFormGroupLabel() string {
+	if a.entryFormGroupIdx < 0 {
+		return "None"
+	}
+	active := a.activeGroups()
+	if a.entryFormGroupIdx < len(active) {
+		return active[a.entryFormGroupIdx].Name()
+	}
+	return "None"
+}
+
 func (a *App) nextFormField() {
-	total := 1 + len(a.entryFormFields)
+	total := a.entryFormTotalFields()
 	a.entryFormCursor = (a.entryFormCursor + 1) % total
 	a.focusFormField()
 }
 
 func (a *App) prevFormField() {
-	total := 1 + len(a.entryFormFields)
+	total := a.entryFormTotalFields()
 	a.entryFormCursor = (a.entryFormCursor - 1 + total) % total
 	a.focusFormField()
 }
@@ -1156,6 +1229,15 @@ func (a *App) saveEntryForm() tea.Cmd {
 		}
 	}
 
+	var groupIdx *uint32
+	if a.entryFormGroupIdx >= 0 {
+		active := a.activeGroups()
+		if a.entryFormGroupIdx < len(active) {
+			gi := active[a.entryFormGroupIdx].Index()
+			groupIdx = &gi
+		}
+	}
+
 	isNew := a.screen == screenEntryAdd
 	a.loading = true
 
@@ -1167,6 +1249,7 @@ func (a *App) saveEntryForm() tea.Cmd {
 			if err != nil {
 				return entryPushedMsg{err: err}
 			}
+			entry.SetGroupIndex(groupIdx)
 			if addUC == nil {
 				return entryPushedMsg{err: fmt.Errorf("not ready")}
 			}
@@ -1183,6 +1266,7 @@ func (a *App) saveEntryForm() tea.Cmd {
 	entry := a.selectedEntry
 	entry.SetName(name)
 	entry.SetFields(fields)
+	entry.SetGroupIndex(groupIdx)
 	updateUC := a.app.UpdateEntry
 	return func() tea.Msg {
 		if updateUC == nil {

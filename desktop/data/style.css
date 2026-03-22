@@ -233,6 +233,30 @@ preferencesgroup > box > label {
 
 /* sidebar spacer no longer needed - single list now */
 
+.group-chip {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+    min-height: 22px;
+    border-radius: 12px;
+    color: #859289;
+    background: transparent;
+    transition: all 120ms ease;
+}
+
+.group-chip:hover {
+    background: rgba(127, 187, 179, 0.1);
+}
+
+.group-chip-active {
+    color: #d3c6aa;
+    background: rgba(127, 187, 179, 0.18);
+}
+
+.group-chip-active:hover {
+    background: rgba(127, 187, 179, 0.24);
+}
+
 headerbar {
     min-height: 42px;
 }
