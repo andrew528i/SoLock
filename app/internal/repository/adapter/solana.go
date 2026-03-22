@@ -423,12 +423,8 @@ func (r *SolanaVaultRepo) DeployProgram(ctx context.Context, programBinary []byt
 	}
 
 	deployerPath := filepath.Join(tmpDir, "deployer.json")
-	programPath := filepath.Join(tmpDir, "program.json")
 
 	if err := writeKeypairJSON(deployerPath, r.owner); err != nil {
-		return err
-	}
-	if err := writeKeypairJSON(programPath, r.programKeypair); err != nil {
 		return err
 	}
 
@@ -437,8 +433,20 @@ func (r *SolanaVaultRepo) DeployProgram(ctx context.Context, programBinary []byt
 		return fmt.Errorf("solana CLI not found: %w", err)
 	}
 
+	deployed, _ := r.IsProgramDeployed(ctx)
+	var programArg string
+	if deployed {
+		programArg = r.programID.String()
+	} else {
+		programPath := filepath.Join(tmpDir, "program.json")
+		if err := writeKeypairJSON(programPath, r.programKeypair); err != nil {
+			return err
+		}
+		programArg = programPath
+	}
+
 	cmd := exec.CommandContext(ctx, solanaBin, "program", "deploy",
-		"--program-id", programPath,
+		"--program-id", programArg,
 		"--keypair", deployerPath,
 		soPath,
 		"--url", r.rpcURL,
@@ -446,8 +454,8 @@ func (r *SolanaVaultRepo) DeployProgram(ctx context.Context, programBinary []byt
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		msg := strings.TrimSpace(string(output))
-		if len(msg) > 200 {
-			msg = msg[:200]
+		if len(msg) > 500 {
+			msg = msg[:500]
 		}
 		return fmt.Errorf("deploy: %s", msg)
 	}
