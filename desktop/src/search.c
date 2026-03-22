@@ -601,11 +601,11 @@ GtkWidget *solock_search_view_new(SolockApp *app)
                                    GTK_POLICY_AUTOMATIC, GTK_POLICY_NEVER);
     gtk_widget_set_size_request(group_scroll, -1, -1);
 
-    GtkWidget *group_bar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);
-    gtk_widget_set_margin_start(group_bar, 8);
-    gtk_widget_set_margin_end(group_bar, 8);
-    gtk_widget_set_margin_top(group_bar, 4);
-    gtk_widget_set_margin_bottom(group_bar, 2);
+    GtkWidget *group_bar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
+    gtk_widget_set_margin_start(group_bar, 6);
+    gtk_widget_set_margin_end(group_bar, 6);
+    gtk_widget_set_margin_top(group_bar, 3);
+    gtk_widget_set_margin_bottom(group_bar, 1);
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(group_scroll), group_bar);
     gtk_widget_set_visible(group_scroll, FALSE);
     gtk_box_append(GTK_BOX(box), group_scroll);

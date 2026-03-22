@@ -104,7 +104,9 @@ typedef struct {
     GtkWidget *add_type_dropdown;
     GtkWidget *add_name_entry;
     GtkWidget *add_fields_box;
+    GtkWidget *add_group_dropdown;
     GtkWidget *add_save_btn;
+    JsonNode  *cached_groups;
 
     /* sort */
     guint      sort_mode; /* 0=name, 1=date, 2=type */
@@ -118,6 +120,7 @@ typedef struct {
 } VaultData;
 
 static void vault_refresh_entries(VaultData *vd);
+static void vault_refresh_group_dropdown(VaultData *vd, GtkWidget *dropdown);
 static void vault_show_detail(VaultData *vd, JsonObject *obj);
 static void vault_clear_detail(VaultData *vd);
 static void vault_stop_detail_totp(VaultData *vd);
@@ -869,6 +872,57 @@ static void on_add_type_changed(GObject *object, GParamSpec *pspec, gpointer dat
     }
 }
 
+static void vault_refresh_group_dropdown(VaultData *vd, GtkWidget *dropdown)
+{
+    if (vd->cached_groups) {
+        json_node_unref(vd->cached_groups);
+        vd->cached_groups = NULL;
+    }
+
+    SolockClient *client = solock_app_get_client(vd->app);
+    vd->cached_groups = solock_client_list_groups(client, NULL);
+
+    GtkStringList *model = gtk_string_list_new(NULL);
+    gtk_string_list_append(model, "No group");
+
+    if (vd->cached_groups && JSON_NODE_TYPE(vd->cached_groups) == JSON_NODE_ARRAY) {
+        JsonArray *arr = json_node_get_array(vd->cached_groups);
+        for (guint i = 0; i < json_array_get_length(arr); i++) {
+            JsonObject *obj = json_array_get_object_element(arr, i);
+            if (json_object_get_boolean_member(obj, "deleted"))
+                continue;
+            const char *name = json_object_get_string_member(obj, "name");
+            gtk_string_list_append(model, name);
+        }
+    }
+
+    gtk_drop_down_set_model(GTK_DROP_DOWN(dropdown), G_LIST_MODEL(model));
+    gtk_drop_down_set_selected(GTK_DROP_DOWN(dropdown), 0);
+    g_object_unref(model);
+}
+
+static int vault_get_group_index_from_dropdown(VaultData *vd, GtkWidget *dropdown)
+{
+    guint selected = gtk_drop_down_get_selected(GTK_DROP_DOWN(dropdown));
+    if (selected == 0 || selected == GTK_INVALID_LIST_POSITION)
+        return -1;
+
+    if (!vd->cached_groups || JSON_NODE_TYPE(vd->cached_groups) != JSON_NODE_ARRAY)
+        return -1;
+
+    JsonArray *arr = json_node_get_array(vd->cached_groups);
+    guint active_idx = 0;
+    for (guint i = 0; i < json_array_get_length(arr); i++) {
+        JsonObject *obj = json_array_get_object_element(arr, i);
+        if (json_object_get_boolean_member(obj, "deleted"))
+            continue;
+        active_idx++;
+        if (active_idx == selected)
+            return (int)json_object_get_int_member(obj, "index");
+    }
+    return -1;
+}
+
 static void on_add_save_clicked(GtkButton *button, gpointer data)
 {
     (void)button;
@@ -917,7 +971,8 @@ static void on_add_save_clicked(GtkButton *button, gpointer data)
 
     SolockClient *client = solock_app_get_client(vd->app);
     GError *error = NULL;
-    if (!solock_client_add_entry(client, type, name, fields_node, &error)) {
+    int group_idx = vault_get_group_index_from_dropdown(vd, vd->add_group_dropdown);
+    if (!solock_client_add_entry(client, type, name, fields_node, group_idx, &error)) {
         g_warning("Add entry failed: %s", error->message);
         g_error_free(error);
         json_node_unref(fields_node);
@@ -958,6 +1013,7 @@ static void on_add_button_clicked(GtkButton *button, gpointer data)
     gtk_editable_set_text(GTK_EDITABLE(vd->add_name_entry), "");
     gtk_drop_down_set_selected(GTK_DROP_DOWN(vd->add_type_dropdown), 0);
     on_add_type_changed(NULL, NULL, vd);
+    vault_refresh_group_dropdown(vd, vd->add_group_dropdown);
     gtk_stack_set_visible_child_name(GTK_STACK(vd->add_stack), "add");
 }
 
@@ -1030,6 +1086,21 @@ static GtkWidget *build_add_form(VaultData *vd)
     /* dynamic fields */
     vd->add_fields_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     gtk_box_append(GTK_BOX(box), vd->add_fields_box);
+
+    /* group dropdown */
+    GtkWidget *group_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+    gtk_widget_set_margin_top(group_row, 4);
+    GtkWidget *group_lbl = gtk_label_new("Group");
+    gtk_widget_add_css_class(group_lbl, "dim-label");
+    gtk_widget_set_size_request(group_lbl, 100, -1);
+    gtk_label_set_xalign(GTK_LABEL(group_lbl), 0);
+    gtk_box_append(GTK_BOX(group_row), group_lbl);
+
+    vd->add_group_dropdown = gtk_drop_down_new_from_strings(
+        (const char *const[]){ "No group", NULL });
+    gtk_widget_set_hexpand(vd->add_group_dropdown, TRUE);
+    gtk_box_append(GTK_BOX(group_row), vd->add_group_dropdown);
+    gtk_box_append(GTK_BOX(box), group_row);
 
     /* buttons */
     GtkWidget *btn_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);

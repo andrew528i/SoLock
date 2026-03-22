@@ -293,7 +293,7 @@ JsonNode *solock_client_get_dashboard(SolockClient *c, GError **error)
     return solock_client_call(c, "get_dashboard", NULL, error);
 }
 
-gboolean solock_client_add_entry(SolockClient *c, const char *type, const char *name, JsonNode *fields, GError **error)
+gboolean solock_client_add_entry(SolockClient *c, const char *type, const char *name, JsonNode *fields, int group_index, GError **error)
 {
     JsonBuilder *b = json_builder_new();
     json_builder_begin_object(b);
@@ -303,6 +303,10 @@ gboolean solock_client_add_entry(SolockClient *c, const char *type, const char *
     json_builder_add_string_value(b, name);
     json_builder_set_member_name(b, "fields");
     json_builder_add_value(b, json_node_copy(fields));
+    if (group_index >= 0) {
+        json_builder_set_member_name(b, "group_index");
+        json_builder_add_int_value(b, group_index);
+    }
     json_builder_end_object(b);
     JsonNode *params = json_builder_get_root(b);
 
@@ -313,7 +317,7 @@ gboolean solock_client_add_entry(SolockClient *c, const char *type, const char *
     return FALSE;
 }
 
-gboolean solock_client_update_entry(SolockClient *c, const char *id, const char *name, JsonNode *fields, GError **error)
+gboolean solock_client_update_entry(SolockClient *c, const char *id, const char *name, JsonNode *fields, int group_index, gboolean clear_group, GError **error)
 {
     JsonBuilder *b = json_builder_new();
     json_builder_begin_object(b);
@@ -326,6 +330,13 @@ gboolean solock_client_update_entry(SolockClient *c, const char *id, const char 
     if (fields) {
         json_builder_set_member_name(b, "fields");
         json_builder_add_value(b, json_node_copy(fields));
+    }
+    if (clear_group) {
+        json_builder_set_member_name(b, "clear_group");
+        json_builder_add_boolean_value(b, TRUE);
+    } else if (group_index >= 0) {
+        json_builder_set_member_name(b, "group_index");
+        json_builder_add_int_value(b, group_index);
     }
     json_builder_end_object(b);
     JsonNode *params = json_builder_get_root(b);

@@ -1210,7 +1210,7 @@ func (a *App) focusFormField() {
 	}
 	if a.entryFormCursor == 0 {
 		a.entryFormName.Focus()
-	} else {
+	} else if a.entryFormCursor <= len(a.entryFormFields) {
 		a.entryFormFields[a.entryFormCursor-1].Input.Focus()
 	}
 }
