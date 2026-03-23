@@ -1344,7 +1344,7 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
     gtk_stack_set_transition_type(GTK_STACK(vd->add_stack), GTK_STACK_TRANSITION_TYPE_CROSSFADE);
 
     GtkWidget *list_panel = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-    gtk_widget_add_css_class(list_panel, "view");
+    gtk_widget_add_css_class(list_panel, "vault-list-panel");
 
     /* toolbar with search + add */
     GtkWidget *toolbar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);

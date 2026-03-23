@@ -257,6 +257,10 @@ preferencesgroup > box > label {
     background: rgba(127, 187, 179, 0.22);
 }
 
+.vault-list-panel {
+    background-color: @view_bg_color;
+}
+
 headerbar {
     min-height: 42px;
 }

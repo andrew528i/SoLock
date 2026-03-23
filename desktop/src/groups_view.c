@@ -306,5 +306,7 @@ GtkWidget *solock_groups_view_new(SolockApp *app)
 
     gtk_stack_set_visible_child_name(GTK_STACK(stack), "list");
 
+    g_signal_connect_swapped(list_page, "map", G_CALLBACK(refresh_groups), gd);
+
     return stack;
 }
