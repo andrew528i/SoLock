@@ -329,7 +329,7 @@ static GtkWidget *make_field_row(DetailData *dd, int idx, const char *label_text
         char lbl_str[2] = { LABEL_CHARS[idx], '\0' };
         hint_label = gtk_label_new(lbl_str);
         gtk_widget_add_css_class(hint_label, "label-hint");
-        gtk_widget_add_css_class(hint_label, "label-hint-animated");
+        gtk_widget_add_css_class(hint_label, "label-hint-visible");
         gtk_box_append(GTK_BOX(row), hint_label);
     }
 
@@ -417,10 +417,47 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
 
     gtk_box_append(GTK_BOX(header), title_box);
 
+    GtkWidget *meta_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 1);
+    gtk_widget_set_valign(meta_box, GTK_ALIGN_CENTER);
+
     GtkWidget *type_label = gtk_label_new(type_display_name(type));
     gtk_widget_add_css_class(type_label, "detail-meta");
-    gtk_widget_set_valign(type_label, GTK_ALIGN_CENTER);
-    gtk_box_append(GTK_BOX(header), type_label);
+    gtk_label_set_xalign(GTK_LABEL(type_label), 1);
+    gtk_box_append(GTK_BOX(meta_box), type_label);
+
+    if (json_object_has_member(obj, "group_index") &&
+        !json_object_get_null_member(obj, "group_index")) {
+        gint64 gi = json_object_get_int_member(obj, "group_index");
+
+        const char *gname = NULL;
+        SolockClient *client = solock_app_get_client(app);
+        JsonNode *groups = solock_client_list_groups(client, NULL);
+        if (groups && JSON_NODE_TYPE(groups) == JSON_NODE_ARRAY) {
+            JsonArray *garr = json_node_get_array(groups);
+            for (guint i = 0; i < json_array_get_length(garr); i++) {
+                JsonObject *gobj = json_array_get_object_element(garr, i);
+                if (json_object_get_int_member(gobj, "index") == gi) {
+                    if (json_object_get_boolean_member(gobj, "deleted"))
+                        gname = "[deleted]";
+                    else
+                        gname = json_object_get_string_member(gobj, "name");
+                    break;
+                }
+            }
+        }
+        if (!gname) gname = "[deleted]";
+
+        GtkWidget *group_label = gtk_label_new(gname);
+        gtk_widget_add_css_class(group_label, "detail-meta");
+        gtk_label_set_xalign(GTK_LABEL(group_label), 1);
+        if (g_strcmp0(gname, "[deleted]") == 0)
+            gtk_widget_add_css_class(group_label, "error");
+        gtk_box_append(GTK_BOX(meta_box), group_label);
+
+        if (groups) json_node_unref(groups);
+    }
+
+    gtk_box_append(GTK_BOX(header), meta_box);
 
     gtk_box_append(GTK_BOX(box), header);
 
@@ -435,7 +472,6 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
     }
 
     int totp_idx = field_count;
-    int total_items = field_count + (has_totp ? 1 : 0);
     dd->fields = g_new0(FieldInfo, field_count);
     dd->field_count = field_count;
 
@@ -529,8 +565,6 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
     g_signal_connect(key_ctrl, "key-released", G_CALLBACK(on_key_released), dd);
     gtk_widget_add_controller(box, key_ctrl);
     gtk_widget_set_focusable(box, TRUE);
-
-    (void)total_items;
 
     g_signal_connect(box, "destroy", G_CALLBACK(on_detail_destroy), dd);
     g_signal_connect_swapped(box, "map", G_CALLBACK(gtk_widget_grab_focus), box);

@@ -113,6 +113,7 @@ typedef struct {
     guint      sort_mode; /* 0=name, 1=date, 2=type */
     GtkWidget *group_filter_dropdown;
     int        filter_group_index; /* -1 = all */
+    gboolean   updating_filter;
 
     /* edit state */
     gboolean   editing;
@@ -172,6 +173,12 @@ static void vault_clear_container(GtkWidget *container)
     GtkWidget *child;
     while ((child = gtk_widget_get_first_child(container)) != NULL)
         gtk_box_remove(GTK_BOX(container), child);
+}
+
+static void closure_free(gpointer data, GClosure *closure)
+{
+    (void)closure;
+    g_free(data);
 }
 
 /* list */
@@ -305,11 +312,13 @@ static void vault_refresh_entries(VaultData *vd)
         vd->cached_groups = NULL;
     }
     SolockClient *client = solock_app_get_client(vd->app);
-    vd->cached_groups = solock_client_list_groups(client, NULL);
+    if (!solock_client_is_locked(client))
+        vd->cached_groups = solock_client_list_groups(client, NULL);
 
     /* update filter dropdown model preserving selection */
     if (vd->group_filter_dropdown) {
         int prev_filter = vd->filter_group_index;
+        vd->updating_filter = TRUE;
         vault_populate_group_dropdown(vd, vd->group_filter_dropdown, "All groups");
 
         if (prev_filter >= 0 && vd->cached_groups &&
@@ -326,6 +335,7 @@ static void vault_refresh_entries(VaultData *vd)
                 }
             }
         }
+        vd->updating_filter = FALSE;
     }
     if (solock_client_is_locked(client)) return;
 
@@ -662,7 +672,7 @@ static void vault_show_detail(VaultData *vd, JsonObject *obj)
         gtk_widget_set_valign(copy_btn, GTK_ALIGN_CENTER);
         char *value_copy = g_strdup(value);
         g_signal_connect_data(copy_btn, "clicked", G_CALLBACK(on_copy_field_clicked),
-                              value_copy, (GClosureNotify)g_free, 0);
+                              value_copy, (GClosureNotify)closure_free, 0);
         adw_action_row_add_suffix(ADW_ACTION_ROW(row), copy_btn);
 
         adw_preferences_group_add(ADW_PREFERENCES_GROUP(group), row);
@@ -1175,6 +1185,8 @@ static void on_group_filter_changed(GtkDropDown *dropdown, GParamSpec *pspec, gp
 {
     (void)pspec;
     VaultData *vd = data;
+    if (vd->updating_filter) return;
+
     guint selected = gtk_drop_down_get_selected(dropdown);
     if (selected == 0 || selected == GTK_INVALID_LIST_POSITION) {
         vd->filter_group_index = -1;

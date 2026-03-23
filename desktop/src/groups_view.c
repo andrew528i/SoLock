@@ -128,6 +128,11 @@ static void refresh_groups(GroupsData *gd)
         gtk_list_box_remove(gd->list_box, child);
 
     SolockClient *client = solock_app_get_client(gd->app);
+    if (solock_client_is_locked(client)) {
+        gtk_widget_set_visible(gd->empty_label, TRUE);
+        return;
+    }
+
     GError *error = NULL;
     JsonNode *result = solock_client_list_groups(client, &error);
 
@@ -149,7 +154,7 @@ static void refresh_groups(GroupsData *gd)
         gboolean deleted = json_object_get_boolean_member(obj, "deleted");
 
         GtkWidget *row_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
-        gtk_widget_set_margin_start(row_box, 12);
+        gtk_widget_set_margin_start(row_box, 8);
         gtk_widget_set_margin_end(row_box, 8);
         gtk_widget_set_margin_top(row_box, 6);
         gtk_widget_set_margin_bottom(row_box, 6);
@@ -219,16 +224,16 @@ GtkWidget *solock_groups_view_new(SolockApp *app)
     GtkWidget *list_page = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 
     GtkWidget *toolbar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
-    gtk_widget_set_margin_start(toolbar, 6);
-    gtk_widget_set_margin_end(toolbar, 6);
-    gtk_widget_set_margin_top(toolbar, 6);
-    gtk_widget_set_margin_bottom(toolbar, 6);
+    gtk_widget_set_margin_start(toolbar, 8);
+    gtk_widget_set_margin_end(toolbar, 8);
+    gtk_widget_set_margin_top(toolbar, 8);
+    gtk_widget_set_margin_bottom(toolbar, 4);
 
     GtkWidget *title_label = gtk_label_new("Groups");
     gtk_widget_add_css_class(title_label, "title-4");
     gtk_widget_set_hexpand(title_label, TRUE);
     gtk_label_set_xalign(GTK_LABEL(title_label), 0);
-    gtk_widget_set_margin_start(title_label, 6);
+    gtk_widget_set_margin_start(title_label, 4);
     gtk_box_append(GTK_BOX(toolbar), title_label);
 
     gd->spinner = gtk_spinner_new();
@@ -251,9 +256,9 @@ GtkWidget *solock_groups_view_new(SolockApp *app)
 
     GtkWidget *list_box = gtk_list_box_new();
     gtk_list_box_set_selection_mode(GTK_LIST_BOX(list_box), GTK_SELECTION_NONE);
-    gtk_widget_set_margin_start(list_box, 12);
-    gtk_widget_set_margin_end(list_box, 12);
-    gtk_widget_set_margin_top(list_box, 6);
+    gtk_widget_set_margin_start(list_box, 8);
+    gtk_widget_set_margin_end(list_box, 8);
+    gtk_widget_set_margin_top(list_box, 4);
     gd->list_box = GTK_LIST_BOX(list_box);
 
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scroll), list_box);
@@ -300,8 +305,6 @@ GtkWidget *solock_groups_view_new(SolockApp *app)
     gtk_stack_add_named(GTK_STACK(stack), edit_page, "edit");
 
     gtk_stack_set_visible_child_name(GTK_STACK(stack), "list");
-
-    g_signal_connect_swapped(stack, "map", G_CALLBACK(refresh_groups), gd);
 
     return stack;
 }
