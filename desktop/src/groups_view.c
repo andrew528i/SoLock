@@ -14,6 +14,7 @@ typedef struct {
 } GroupsData;
 
 static void refresh_groups(GroupsData *gd);
+static void groups_show_spinner(GroupsData *gd, gboolean show);
 
 typedef struct {
     GroupsData *gd;

@@ -128,6 +128,7 @@ typedef struct {
 
 static void vault_refresh_entries(VaultData *vd);
 static void vault_refresh_group_dropdown(VaultData *vd, GtkWidget *dropdown);
+static void vault_populate_group_dropdown(VaultData *vd, GtkWidget *dropdown, const char *first_label);
 static int  vault_get_group_index_from_dropdown(VaultData *vd, GtkWidget *dropdown);
 static void on_group_filter_changed(GtkDropDown *dropdown, GParamSpec *pspec, gpointer data);
 static void vault_show_detail(VaultData *vd, JsonObject *obj);
