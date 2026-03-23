@@ -128,6 +128,8 @@ typedef struct {
 } VaultData;
 
 static void vault_refresh_entries(VaultData *vd);
+static void vault_refresh_entries_filtered(VaultData *vd);
+static void vault_rebuild_list(VaultData *vd);
 static void vault_refresh_group_dropdown(VaultData *vd, GtkWidget *dropdown);
 static void vault_populate_group_dropdown(VaultData *vd, GtkWidget *dropdown, const char *first_label);
 static int  vault_get_group_index_from_dropdown(VaultData *vd, GtkWidget *dropdown);
@@ -295,17 +297,10 @@ static void sort_json_array(JsonArray *arr, guint sort_mode)
     g_free(nodes);
 }
 
+static void vault_rebuild_list(VaultData *vd);
+
 static void vault_refresh_entries(VaultData *vd)
 {
-    GtkWidget *child;
-    while ((child = gtk_widget_get_first_child(vd->list_box)) != NULL)
-        gtk_list_box_remove(GTK_LIST_BOX(vd->list_box), child);
-
-    if (vd->entries) {
-        json_node_unref(vd->entries);
-        vd->entries = NULL;
-    }
-
     /* refresh cached groups */
     if (vd->cached_groups) {
         json_node_unref(vd->cached_groups);
@@ -337,6 +332,27 @@ static void vault_refresh_entries(VaultData *vd)
         }
         vd->updating_filter = FALSE;
     }
+
+    vault_refresh_entries_filtered(vd);
+}
+
+static void vault_refresh_entries_filtered(VaultData *vd)
+{
+    vault_rebuild_list(vd);
+}
+
+static void vault_rebuild_list(VaultData *vd)
+{
+    GtkWidget *child;
+    while ((child = gtk_widget_get_first_child(vd->list_box)) != NULL)
+        gtk_list_box_remove(GTK_LIST_BOX(vd->list_box), child);
+
+    if (vd->entries) {
+        json_node_unref(vd->entries);
+        vd->entries = NULL;
+    }
+
+    SolockClient *client = solock_app_get_client(vd->app);
     if (solock_client_is_locked(client)) return;
 
     GError *error = NULL;
@@ -1181,6 +1197,8 @@ static void on_sort_changed(GtkDropDown *dropdown, GParamSpec *pspec, gpointer d
 }
 
 
+static void vault_refresh_entries_filtered(VaultData *vd);
+
 static void on_group_filter_changed(GtkDropDown *dropdown, GParamSpec *pspec, gpointer data)
 {
     (void)pspec;
@@ -1193,7 +1211,7 @@ static void on_group_filter_changed(GtkDropDown *dropdown, GParamSpec *pspec, gp
     } else {
         vd->filter_group_index = vault_get_group_index_from_dropdown(vd, GTK_WIDGET(dropdown));
     }
-    vault_refresh_entries(vd);
+    vault_refresh_entries_filtered(vd);
 }
 
 static void on_add_button_clicked(GtkButton *button, gpointer data)
@@ -1326,6 +1344,7 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
     gtk_stack_set_transition_type(GTK_STACK(vd->add_stack), GTK_STACK_TRANSITION_TYPE_CROSSFADE);
 
     GtkWidget *list_panel = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    gtk_widget_add_css_class(list_panel, "view");
 
     /* toolbar with search + add */
     GtkWidget *toolbar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
@@ -1489,14 +1508,16 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
     vd->detail_fields_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     gtk_box_append(GTK_BOX(vd->detail_view), vd->detail_fields_box);
 
-    /* spacer to push action buttons to bottom */
-    GtkWidget *detail_spacer = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-    gtk_widget_set_vexpand(detail_spacer, TRUE);
-    gtk_box_append(GTK_BOX(vd->detail_view), detail_spacer);
+    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(detail_scroll), vd->detail_view);
 
-    /* action buttons */
+    GtkWidget *detail_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    gtk_box_append(GTK_BOX(detail_box), detail_scroll);
+
+    /* action buttons - outside scroll, always at bottom */
     vd->detail_action_bar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
-    gtk_widget_set_margin_top(vd->detail_action_bar, 16);
+    gtk_widget_set_margin_top(vd->detail_action_bar, 8);
+    gtk_widget_set_margin_bottom(vd->detail_action_bar, 12);
+    gtk_widget_set_margin_end(vd->detail_action_bar, 12);
     gtk_widget_set_halign(vd->detail_action_bar, GTK_ALIGN_END);
 
     vd->detail_edit_btn = gtk_button_new_with_label("Edit");
@@ -1509,10 +1530,8 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
     g_signal_connect(vd->detail_delete_btn, "clicked", G_CALLBACK(on_delete_clicked), vd);
     gtk_box_append(GTK_BOX(vd->detail_action_bar), vd->detail_delete_btn);
 
-    gtk_box_append(GTK_BOX(vd->detail_view), vd->detail_action_bar);
-
-    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(detail_scroll), vd->detail_view);
-    gtk_stack_add_named(GTK_STACK(vd->detail_stack), detail_scroll, "detail");
+    gtk_box_append(GTK_BOX(detail_box), vd->detail_action_bar);
+    gtk_stack_add_named(GTK_STACK(vd->detail_stack), detail_box, "detail");
 
     gtk_stack_set_visible_child_name(GTK_STACK(vd->detail_stack), "empty");
 
