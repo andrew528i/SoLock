@@ -7,6 +7,7 @@ typedef struct {
     SolockApp     *app;
     GtkListBox    *list_box;
     GtkWidget     *empty_label;
+    GtkWidget     *spinner;
     GtkStack      *view_stack;
     GtkEntry      *name_entry;
     int            edit_index;
@@ -46,11 +47,15 @@ static void on_row_delete(GtkButton *btn, gpointer data)
     SolockClient *client = solock_app_get_client(ra->gd->app);
     GError *error = NULL;
 
+    groups_show_spinner(ra->gd, TRUE);
+
     if (ra->deleted) {
         solock_client_purge_group(client, ra->index, &error);
     } else {
         solock_client_delete_group(client, ra->index, FALSE, &error);
     }
+
+    groups_show_spinner(ra->gd, FALSE);
 
     if (error) {
         g_warning("Group action error: %s", error->message);
@@ -70,6 +75,15 @@ static void on_add_clicked(GtkButton *btn, gpointer data)
     gtk_widget_grab_focus(GTK_WIDGET(gd->name_entry));
 }
 
+static void groups_show_spinner(GroupsData *gd, gboolean show)
+{
+    if (gd->spinner) {
+        gtk_widget_set_visible(gd->spinner, show);
+        if (show) gtk_spinner_start(GTK_SPINNER(gd->spinner));
+        else gtk_spinner_stop(GTK_SPINNER(gd->spinner));
+    }
+}
+
 static void on_save_clicked(GtkButton *btn, gpointer data)
 {
     (void)btn;
@@ -79,12 +93,16 @@ static void on_save_clicked(GtkButton *btn, gpointer data)
 
     if (!name || strlen(name) == 0) return;
 
+    groups_show_spinner(gd, TRUE);
+
     GError *error = NULL;
     if (gd->edit_index < 0) {
         solock_client_add_group(client, name, &error);
     } else {
         solock_client_update_group(client, gd->edit_index, name, &error);
     }
+
+    groups_show_spinner(gd, FALSE);
 
     if (error) {
         g_warning("Group save error: %s", error->message);
@@ -211,6 +229,10 @@ GtkWidget *solock_groups_view_new(SolockApp *app)
     gtk_label_set_xalign(GTK_LABEL(title_label), 0);
     gtk_widget_set_margin_start(title_label, 6);
     gtk_box_append(GTK_BOX(toolbar), title_label);
+
+    gd->spinner = gtk_spinner_new();
+    gtk_widget_set_visible(gd->spinner, FALSE);
+    gtk_box_append(GTK_BOX(toolbar), gd->spinner);
 
     GtkWidget *add_btn = gtk_button_new_from_icon_name("list-add-symbolic");
     gtk_widget_add_css_class(add_btn, "flat");

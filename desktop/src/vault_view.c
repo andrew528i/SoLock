@@ -120,6 +120,9 @@ typedef struct {
     GtkWidget *edit_fields_box;
     GtkWidget *edit_group_dropdown;
     GtkWidget *edit_save_btn;
+
+    /* loading indicator */
+    GtkWidget *spinner;
     GtkWidget *edit_cancel_btn;
 } VaultData;
 
@@ -294,13 +297,34 @@ static void vault_refresh_entries(VaultData *vd)
         vd->entries = NULL;
     }
 
-    /* refresh cached groups for detail view */
+    /* refresh cached groups */
     if (vd->cached_groups) {
         json_node_unref(vd->cached_groups);
         vd->cached_groups = NULL;
     }
     SolockClient *client = solock_app_get_client(vd->app);
     vd->cached_groups = solock_client_list_groups(client, NULL);
+
+    /* update filter dropdown model preserving selection */
+    if (vd->group_filter_dropdown) {
+        int prev_filter = vd->filter_group_index;
+        vault_populate_group_dropdown(vd, vd->group_filter_dropdown, "All groups");
+
+        if (prev_filter >= 0 && vd->cached_groups &&
+            JSON_NODE_TYPE(vd->cached_groups) == JSON_NODE_ARRAY) {
+            JsonArray *garr = json_node_get_array(vd->cached_groups);
+            guint sel = 0;
+            for (guint gi = 0; gi < json_array_get_length(garr); gi++) {
+                JsonObject *gobj = json_array_get_object_element(garr, gi);
+                if (json_object_get_boolean_member(gobj, "deleted")) continue;
+                sel++;
+                if ((int)json_object_get_int_member(gobj, "index") == prev_filter) {
+                    gtk_drop_down_set_selected(GTK_DROP_DOWN(vd->group_filter_dropdown), sel);
+                    break;
+                }
+            }
+        }
+    }
     if (solock_client_is_locked(client)) return;
 
     GError *error = NULL;
@@ -381,6 +405,22 @@ static void vault_refresh_entries(VaultData *vd)
         }
 
         gtk_box_append(GTK_BOX(row_box), text_box);
+
+        if (json_object_has_member(obj, "group_index") &&
+            !json_object_get_null_member(obj, "group_index")) {
+            int gi = (int)json_object_get_int_member(obj, "group_index");
+            const char *gname = vault_group_name_for_index(vd, gi);
+            if (gname) {
+                GtkWidget *group_badge = gtk_label_new(gname);
+                if (g_strcmp0(gname, "[deleted]") == 0)
+                    gtk_widget_add_css_class(group_badge, "error");
+                else
+                    gtk_widget_add_css_class(group_badge, "dim-label");
+                gtk_widget_add_css_class(group_badge, "caption");
+                gtk_widget_set_valign(group_badge, GTK_ALIGN_CENTER);
+                gtk_box_append(GTK_BOX(row_box), group_badge);
+            }
+        }
 
         GtkWidget *type_badge = gtk_label_new(type_display_name(type));
         gtk_widget_add_css_class(type_badge, "dim-label");
@@ -550,15 +590,7 @@ static void vault_show_detail(VaultData *vd, JsonObject *obj)
     gtk_label_set_text(GTK_LABEL(vd->detail_type_label), type_with_slot);
     g_free(type_with_slot);
 
-    if (json_object_has_member(obj, "group_index") &&
-        !json_object_get_null_member(obj, "group_index")) {
-        int gi = (int)json_object_get_int_member(obj, "group_index");
-        const char *gname = vault_group_name_for_index(vd, gi);
-        gtk_label_set_text(GTK_LABEL(vd->detail_group_label), gname ? gname : "");
-        gtk_widget_set_visible(vd->detail_group_label, gname != NULL);
-    } else {
-        gtk_widget_set_visible(vd->detail_group_label, FALSE);
-    }
+    gtk_widget_set_visible(vd->detail_group_label, FALSE);
 
     vault_clear_container(vd->detail_fields_box);
 
@@ -572,6 +604,24 @@ static void vault_show_detail(VaultData *vd, JsonObject *obj)
     gtk_widget_set_margin_start(group, 4);
     gtk_widget_set_margin_end(group, 4);
     gtk_widget_set_margin_top(group, 8);
+
+    if (json_object_has_member(obj, "group_index") &&
+        !json_object_get_null_member(obj, "group_index")) {
+        int gi = (int)json_object_get_int_member(obj, "group_index");
+        const char *gname = vault_group_name_for_index(vd, gi);
+        if (gname) {
+            GtkWidget *grow = adw_action_row_new();
+            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(grow), "Group");
+            adw_action_row_set_subtitle(ADW_ACTION_ROW(grow), gname);
+            if (g_strcmp0(gname, "[deleted]") == 0)
+                gtk_widget_add_css_class(grow, "error");
+            gtk_widget_set_margin_top(grow, 4);
+            gtk_widget_set_margin_bottom(grow, 4);
+            gtk_widget_set_margin_start(grow, 4);
+            gtk_widget_set_margin_end(grow, 4);
+            adw_preferences_group_add(ADW_PREFERENCES_GROUP(group), grow);
+        }
+    }
 
     GList *members = json_object_get_members(fields);
     for (GList *l = members; l; l = l->next) {
@@ -698,6 +748,17 @@ static void on_delete_clicked(GtkButton *button, gpointer data)
 
 /* edit */
 
+static void vault_show_spinner(VaultData *vd, gboolean show)
+{
+    if (vd->spinner) {
+        gtk_widget_set_visible(vd->spinner, show);
+        if (show)
+            gtk_spinner_start(GTK_SPINNER(vd->spinner));
+        else
+            gtk_spinner_stop(GTK_SPINNER(vd->spinner));
+    }
+}
+
 static void on_edit_save_clicked(GtkButton *button, gpointer data)
 {
     (void)button;
@@ -706,6 +767,8 @@ static void on_edit_save_clicked(GtkButton *button, gpointer data)
 
     const char *new_name = gtk_editable_get_text(GTK_EDITABLE(vd->edit_name_entry));
     if (!new_name || !*new_name) return;
+
+    vault_show_spinner(vd, TRUE);
 
     JsonBuilder *builder = json_builder_new();
     json_builder_begin_object(builder);
@@ -733,6 +796,7 @@ static void on_edit_save_clicked(GtkButton *button, gpointer data)
     guint edit_sel = gtk_drop_down_get_selected(GTK_DROP_DOWN(vd->edit_group_dropdown));
     gboolean clear_grp = (edit_sel == 0);
     if (!solock_client_update_entry(client, vd->selected_id, new_name, fields_node, edit_gi, clear_grp, &error)) {
+        vault_show_spinner(vd, FALSE);
         g_warning("Update failed: %s", error->message);
         g_error_free(error);
         json_node_unref(fields_node);
@@ -740,6 +804,7 @@ static void on_edit_save_clicked(GtkButton *button, gpointer data)
     }
     json_node_unref(fields_node);
 
+    vault_show_spinner(vd, FALSE);
     vd->editing = FALSE;
     vault_refresh_entries(vd);
 
@@ -961,18 +1026,10 @@ static void on_add_type_changed(GObject *object, GParamSpec *pspec, gpointer dat
     }
 }
 
-static void vault_refresh_group_dropdown(VaultData *vd, GtkWidget *dropdown)
+static void vault_populate_group_dropdown(VaultData *vd, GtkWidget *dropdown, const char *first_label)
 {
-    if (vd->cached_groups) {
-        json_node_unref(vd->cached_groups);
-        vd->cached_groups = NULL;
-    }
-
-    SolockClient *client = solock_app_get_client(vd->app);
-    vd->cached_groups = solock_client_list_groups(client, NULL);
-
     GtkStringList *model = gtk_string_list_new(NULL);
-    gtk_string_list_append(model, "No group");
+    gtk_string_list_append(model, first_label);
 
     if (vd->cached_groups && JSON_NODE_TYPE(vd->cached_groups) == JSON_NODE_ARRAY) {
         JsonArray *arr = json_node_get_array(vd->cached_groups);
@@ -988,6 +1045,18 @@ static void vault_refresh_group_dropdown(VaultData *vd, GtkWidget *dropdown)
     gtk_drop_down_set_model(GTK_DROP_DOWN(dropdown), G_LIST_MODEL(model));
     gtk_drop_down_set_selected(GTK_DROP_DOWN(dropdown), 0);
     g_object_unref(model);
+}
+
+static void vault_refresh_group_dropdown(VaultData *vd, GtkWidget *dropdown)
+{
+    if (vd->cached_groups) {
+        json_node_unref(vd->cached_groups);
+        vd->cached_groups = NULL;
+    }
+    SolockClient *client = solock_app_get_client(vd->app);
+    vd->cached_groups = solock_client_list_groups(client, NULL);
+
+    vault_populate_group_dropdown(vd, dropdown, "No group");
 }
 
 static int vault_get_group_index_from_dropdown(VaultData *vd, GtkWidget *dropdown)
@@ -1058,16 +1127,20 @@ static void on_add_save_clicked(GtkButton *button, gpointer data)
     JsonNode *fields_node = json_builder_get_root(builder);
     g_object_unref(builder);
 
+    vault_show_spinner(vd, TRUE);
+
     SolockClient *client = solock_app_get_client(vd->app);
     GError *error = NULL;
     int group_idx = vault_get_group_index_from_dropdown(vd, vd->add_group_dropdown);
     if (!solock_client_add_entry(client, type, name, fields_node, group_idx, &error)) {
+        vault_show_spinner(vd, FALSE);
         g_warning("Add entry failed: %s", error->message);
         g_error_free(error);
         json_node_unref(fields_node);
         return;
     }
     json_node_unref(fields_node);
+    vault_show_spinner(vd, FALSE);
 
     /* reset form */
     gtk_editable_set_text(GTK_EDITABLE(vd->add_name_entry), "");
@@ -1095,16 +1168,6 @@ static void on_sort_changed(GtkDropDown *dropdown, GParamSpec *pspec, gpointer d
     vault_refresh_entries(vd);
 }
 
-static void vault_refresh_group_filter(VaultData *vd)
-{
-    vault_refresh_group_dropdown(vd, vd->group_filter_dropdown);
-    /* re-add "All groups" as first item */
-    GtkStringList *model = GTK_STRING_LIST(gtk_drop_down_get_model(
-        GTK_DROP_DOWN(vd->group_filter_dropdown)));
-    gtk_string_list_splice(model, 0, 1, (const char *const[]){ "All groups", NULL });
-    gtk_drop_down_set_selected(GTK_DROP_DOWN(vd->group_filter_dropdown), 0);
-    vd->filter_group_index = -1;
-}
 
 static void on_group_filter_changed(GtkDropDown *dropdown, GParamSpec *pspec, gpointer data)
 {
@@ -1399,6 +1462,12 @@ GtkWidget *solock_vault_view_new(SolockApp *app)
     gtk_widget_set_margin_start(vd->detail_group_label, 6);
     gtk_widget_set_visible(vd->detail_group_label, FALSE);
     gtk_box_append(GTK_BOX(detail_header), vd->detail_group_label);
+
+    vd->spinner = gtk_spinner_new();
+    gtk_widget_set_valign(vd->spinner, GTK_ALIGN_CENTER);
+    gtk_widget_set_margin_start(vd->spinner, 6);
+    gtk_widget_set_visible(vd->spinner, FALSE);
+    gtk_box_append(GTK_BOX(detail_header), vd->spinner);
 
     gtk_box_append(GTK_BOX(vd->detail_view), detail_header);
 
