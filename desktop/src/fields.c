@@ -116,7 +116,6 @@ static gboolean is_shift_held(void)
 static void do_paste_value(SolockApp *app, const char *value, gboolean force_type)
 {
     SolockConfig *config = solock_app_get_config(app);
-    const char *method = solock_config_get_paste_method(config);
 
     GtkWidget *popup = solock_app_get_popup(app);
     solock_popup_hide(popup);
@@ -124,7 +123,7 @@ static void do_paste_value(SolockApp *app, const char *value, gboolean force_typ
     PasteJob *job = g_new0(PasteJob, 1);
     job->value = g_strdup(value);
     job->clear_seconds = solock_config_get_clipboard_clear_seconds(config);
-    job->use_wtype = force_type && g_strcmp0(method, "wtype") == 0;
+    job->use_wtype = force_type;
 
     g_timeout_add(150, do_paste_delayed, job);
 }
@@ -333,7 +332,6 @@ static GtkWidget *make_field_row(DetailData *dd, int idx, const char *label_text
         char lbl_str[2] = { LABEL_CHARS[idx], '\0' };
         hint_label = gtk_label_new(lbl_str);
         gtk_widget_add_css_class(hint_label, "label-hint");
-        gtk_widget_add_css_class(hint_label, "label-hint-visible");
         gtk_box_append(GTK_BOX(row), hint_label);
     }
 
