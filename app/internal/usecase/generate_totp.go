@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"strings"
 	"time"
 
 	"github.com/pquerna/otp"
@@ -19,6 +20,20 @@ func NewGenerateTOTPUseCase() *GenerateTOTPUseCase {
 }
 
 func (uc *GenerateTOTPUseCase) Execute(secret string, digits int, period int) (*TOTPResult, error) {
+	if strings.HasPrefix(secret, "otpauth://") {
+		key, err := otp.NewKeyFromURL(secret)
+		if err != nil {
+			return nil, err
+		}
+		secret = key.Secret()
+		if digits == 0 {
+			digits = int(key.Digits())
+		}
+		if period == 0 {
+			period = int(key.Period())
+		}
+	}
+
 	if digits == 0 {
 		digits = 6
 	}
