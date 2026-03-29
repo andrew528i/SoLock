@@ -103,7 +103,17 @@ static gboolean do_paste_delayed(gpointer data)
     return G_SOURCE_REMOVE;
 }
 
-static void do_paste_value(SolockApp *app, const char *value)
+static gboolean is_shift_held(void)
+{
+    GdkDisplay *display = gdk_display_get_default();
+    GdkSeat *seat = gdk_display_get_default_seat(display);
+    GdkDevice *keyboard = gdk_seat_get_keyboard(seat);
+    if (!keyboard) return FALSE;
+    GdkModifierType mods = gdk_device_get_modifier_state(keyboard);
+    return (mods & GDK_SHIFT_MASK) != 0;
+}
+
+static void do_paste_value(SolockApp *app, const char *value, gboolean force_type)
 {
     SolockConfig *config = solock_app_get_config(app);
     const char *method = solock_config_get_paste_method(config);
@@ -114,7 +124,7 @@ static void do_paste_value(SolockApp *app, const char *value)
     PasteJob *job = g_new0(PasteJob, 1);
     job->value = g_strdup(value);
     job->clear_seconds = solock_config_get_clipboard_clear_seconds(config);
-    job->use_wtype = g_strcmp0(method, "wtype") == 0;
+    job->use_wtype = force_type && g_strcmp0(method, "wtype") == 0;
 
     g_timeout_add(150, do_paste_delayed, job);
 }
@@ -136,7 +146,7 @@ static void on_field_clicked(GtkGestureClick *gesture, int n_press, double x, do
 {
     (void)gesture; (void)n_press; (void)x; (void)y;
     FieldClickData *fcd = data;
-    do_paste_value(fcd->app, fcd->value);
+    do_paste_value(fcd->app, fcd->value, is_shift_held());
 }
 
 typedef struct {
@@ -158,10 +168,7 @@ static void on_totp_clicked(GtkGestureClick *gesture, int n_press, double x, dou
     TotpClickData *tcd = data;
 
     if (tcd->code && *tcd->code) {
-        SolockConfig *config = solock_app_get_config(tcd->app);
-        int clear = solock_config_get_clipboard_clear_seconds(config);
-        solock_clipboard_copy(tcd->code, clear, NULL);
-        do_paste_value(tcd->app, tcd->code);
+        do_paste_value(tcd->app, tcd->code, is_shift_held());
     } else {
         GtkWidget *popup = solock_app_get_popup(tcd->app);
         solock_popup_hide(popup);
@@ -272,23 +279,20 @@ static gboolean on_key_pressed(GtkEventControllerKey *ctrl, guint keyval,
     }
 
     if (state & GDK_CONTROL_MASK) {
+        gboolean shift = (state & GDK_SHIFT_MASK) != 0;
         char ch = (char)gdk_keyval_to_unicode(keyval);
         if (ch) {
             for (int i = 0; i < dd->field_count && i < LABEL_CHARS_LEN; i++) {
                 if (LABEL_CHARS[i] == ch) {
-                    do_paste_value(dd->app, dd->fields[i].value);
+                    do_paste_value(dd->app, dd->fields[i].value, shift);
                     return TRUE;
                 }
             }
             int totp_idx = dd->field_count;
             if (dd->totp_code_label && totp_idx < LABEL_CHARS_LEN && LABEL_CHARS[totp_idx] == ch) {
                 TotpClickData *tcd = g_object_get_data(G_OBJECT(dd->totp_code_label), "totp-click-data");
-                if (tcd && tcd->code && *tcd->code) {
-                    SolockConfig *config = solock_app_get_config(dd->app);
-                    int clear = solock_config_get_clipboard_clear_seconds(config);
-                    solock_clipboard_copy(tcd->code, clear, NULL);
-                    do_paste_value(dd->app, tcd->code);
-                }
+                if (tcd && tcd->code && *tcd->code)
+                    do_paste_value(dd->app, tcd->code, shift);
                 return TRUE;
             }
         }
@@ -296,7 +300,7 @@ static gboolean on_key_pressed(GtkEventControllerKey *ctrl, guint keyval,
 
     if (keyval == GDK_KEY_Return || keyval == GDK_KEY_KP_Enter) {
         if (dd->field_count == 1 && dd->fields[0].value && *dd->fields[0].value) {
-            do_paste_value(dd->app, dd->fields[0].value);
+            do_paste_value(dd->app, dd->fields[0].value, (state & GDK_SHIFT_MASK) != 0);
             return TRUE;
         }
     }

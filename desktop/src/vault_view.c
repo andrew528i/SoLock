@@ -55,7 +55,7 @@ typedef struct {
     const char **fields;
 } EntryTypeDef;
 
-static const char *password_fields[] = { "site", "username", "password", NULL };
+static const char *password_fields[] = { "site", "username", "password", "totp_secret", NULL };
 static const char *note_fields[]     = { "content", NULL };
 static const char *card_fields[]     = { "cardholder", "number", "expiry", "cvv", NULL };
 static const char *totp_fields[]     = { "secret", NULL };
@@ -971,12 +971,18 @@ static void on_edit_clicked(GtkButton *button, gpointer data)
     vd->edit_fields_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 
     if (fields) {
+        const char *type = json_object_get_string_member(obj, "type");
         GList *members = json_object_get_members(fields);
         for (GList *l = members; l; l = l->next) {
             const char *key = l->data;
             const char *value = json_object_get_string_member(fields, key);
             gtk_box_append(GTK_BOX(vd->edit_fields_box),
                            make_edit_field_row(vd, key, value));
+        }
+        if (g_strcmp0(type, "password") == 0 &&
+            !json_object_has_member(fields, "totp_secret")) {
+            gtk_box_append(GTK_BOX(vd->edit_fields_box),
+                           make_edit_field_row(vd, "totp_secret", ""));
         }
         g_list_free(members);
     }
