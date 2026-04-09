@@ -749,6 +749,8 @@ static void on_view_map(GtkWidget *widget, gpointer data)
 GtkWidget *solock_search_view_new(SolockApp *app)
 {
     GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    gtk_widget_set_overflow(box, GTK_OVERFLOW_HIDDEN);
+    gtk_widget_add_css_class(box, "popup-content");
 
     GtkWidget *search_revealer = gtk_revealer_new();
     gtk_revealer_set_transition_type(GTK_REVEALER(search_revealer), GTK_REVEALER_TRANSITION_TYPE_SLIDE_DOWN);
