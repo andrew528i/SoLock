@@ -30,6 +30,13 @@
     min-height: 0;
 }
 
+.scroll-indicator {
+    font-size: 10px;
+    color: #7a8478;
+    margin: 2px 0;
+    letter-spacing: 3px;
+}
+
 .entry-list {
     background: transparent;
     padding: 4px 0 4px 0;

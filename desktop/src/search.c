@@ -5,9 +5,9 @@ extern SolockClient *solock_app_get_client(SolockApp *app);
 extern SolockConfig *solock_app_get_config(SolockApp *app);
 extern GtkWidget    *solock_app_get_popup(SolockApp *app);
 
-static const char LABEL_CHARS[] = "asdfghjkl";
-static const int  LABEL_CHARS_LEN = 9;
-#define MAX_VISIBLE_ENTRIES 6
+static const char LABEL_CHARS[] = "asdfghjkl;";
+static const int  LABEL_CHARS_LEN = 10;
+#define MAX_VISIBLE_ENTRIES 8
 
 typedef struct {
     SolockApp  *app;
@@ -56,6 +56,7 @@ static gboolean do_scroll_to_active_chip(gpointer data)
 static void scroll_to_active_chip(SearchData *sd)
 {
     g_idle_add(do_scroll_to_active_chip, sd);
+    g_timeout_add(50, do_scroll_to_active_chip, sd);
 }
 
 static void on_group_chip_clicked(GtkButton *btn, gpointer data)
@@ -286,7 +287,7 @@ static void on_row_activated(GtkListBox *list_box, GtkListBoxRow *row, gpointer 
     (void)list_box;
     SearchData *sd = data;
     GtkWidget *child = gtk_list_box_row_get_child(row);
-    if (!child) return;
+    if (!child || !gtk_widget_has_css_class(child, "entry-row")) return;
     int idx = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(child), "entry-index"));
     activate_entry_at_index(sd, idx);
 }
@@ -337,10 +338,11 @@ static gboolean on_key_pressed(GtkEventControllerKey *ctrl, guint keyval,
     if (state & GDK_CONTROL_MASK) {
         int label_idx = index_for_label_char(keyval);
         if (label_idx >= 0) {
-            GtkListBoxRow *row = gtk_list_box_get_row_at_index(GTK_LIST_BOX(sd->list_box), label_idx);
+            int row_idx = label_idx + (sd->visible_offset > 0 ? 1 : 0);
+            GtkListBoxRow *row = gtk_list_box_get_row_at_index(GTK_LIST_BOX(sd->list_box), row_idx);
             if (row) {
                 GtkWidget *child = gtk_list_box_row_get_child(row);
-                if (child) {
+                if (child && gtk_widget_has_css_class(child, "entry-row")) {
                     int entry_idx = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(child), "entry-index"));
                     activate_entry_at_index(sd, entry_idx);
                 }
@@ -373,7 +375,7 @@ static gboolean on_key_pressed(GtkEventControllerKey *ctrl, guint keyval,
         GtkListBoxRow *row = gtk_list_box_get_selected_row(GTK_LIST_BOX(sd->list_box));
         if (row) {
             GtkWidget *child = gtk_list_box_row_get_child(row);
-            if (child) {
+            if (child && gtk_widget_has_css_class(child, "entry-row")) {
                 int idx = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(child), "entry-index"));
                 activate_entry_at_index(sd, idx);
             }
@@ -601,6 +603,14 @@ static void rebuild_visible_list(SearchData *sd)
     int end = sd->visible_offset + MAX_VISIBLE_ENTRIES;
     if (end > sd->filtered_count) end = sd->filtered_count;
 
+    if (sd->visible_offset > 0) {
+        GtkWidget *more_up = gtk_label_new("\xc2\xb7\xc2\xb7\xc2\xb7");
+        gtk_widget_add_css_class(more_up, "scroll-indicator");
+        gtk_list_box_append(GTK_LIST_BOX(sd->list_box), more_up);
+        GtkListBoxRow *ind_row = GTK_LIST_BOX_ROW(gtk_widget_get_parent(more_up));
+        if (ind_row) gtk_list_box_row_set_selectable(ind_row, FALSE);
+    }
+
     for (int vi = sd->visible_offset; vi < end; vi++) {
         int i = sd->filtered_indices[vi];
         JsonObject *obj = json_array_get_object_element(arr, i);
@@ -706,10 +716,53 @@ static void rebuild_visible_list(SearchData *sd)
         gtk_list_box_append(GTK_LIST_BOX(sd->list_box), row_box);
     }
 
+    if (end < sd->filtered_count) {
+        GtkWidget *more_down = gtk_label_new("\xc2\xb7\xc2\xb7\xc2\xb7");
+        gtk_widget_add_css_class(more_down, "scroll-indicator");
+        gtk_list_box_append(GTK_LIST_BOX(sd->list_box), more_down);
+        GtkListBoxRow *ind_row = GTK_LIST_BOX_ROW(gtk_widget_get_parent(more_down));
+        if (ind_row) gtk_list_box_row_set_selectable(ind_row, FALSE);
+    }
+
     int sel_row = sd->selected_filtered - sd->visible_offset;
+    if (sd->visible_offset > 0) sel_row++;
     GtkListBoxRow *row = gtk_list_box_get_row_at_index(GTK_LIST_BOX(sd->list_box), sel_row);
     if (row)
         gtk_list_box_select_row(GTK_LIST_BOX(sd->list_box), row);
+}
+
+static gboolean on_entry_scroll(GtkEventControllerScroll *ctrl, double dx, double dy, gpointer data)
+{
+    (void)ctrl; (void)dx;
+    SearchData *sd = data;
+    if (sd->filtered_count == 0) return TRUE;
+    int step = dy > 0 ? 2 : -2;
+    int next = sd->selected_filtered + step;
+    if (next < 0) next = 0;
+    if (next >= sd->filtered_count) next = sd->filtered_count - 1;
+    sd->selected_filtered = next;
+    if (next < sd->visible_offset)
+        sd->visible_offset = next;
+    else if (next >= sd->visible_offset + MAX_VISIBLE_ENTRIES)
+        sd->visible_offset = next - MAX_VISIBLE_ENTRIES + 1;
+    rebuild_visible_list(sd);
+    return TRUE;
+}
+
+static gboolean on_group_scroll(GtkEventControllerScroll *ctrl, double dx, double dy, gpointer data)
+{
+    (void)ctrl;
+    SearchData *sd = data;
+    GtkAdjustment *adj = gtk_scrolled_window_get_hadjustment(GTK_SCROLLED_WINDOW(sd->group_scroll));
+    double val = gtk_adjustment_get_value(adj);
+    double step = (dx != 0.0) ? dx * 30.0 : dy * 30.0;
+    double upper = gtk_adjustment_get_upper(adj);
+    double page = gtk_adjustment_get_page_size(adj);
+    double target = val + step;
+    if (target < 0) target = 0;
+    if (target > upper - page) target = upper - page;
+    gtk_adjustment_set_value(adj, target);
+    return TRUE;
 }
 
 static void on_view_map(GtkWidget *widget, gpointer data)
@@ -729,8 +782,7 @@ GtkWidget *solock_search_view_new(SolockApp *app)
 {
     GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     GtkWidget *search_revealer = gtk_revealer_new();
-    gtk_revealer_set_transition_type(GTK_REVEALER(search_revealer), GTK_REVEALER_TRANSITION_TYPE_SLIDE_DOWN);
-    gtk_revealer_set_transition_duration(GTK_REVEALER(search_revealer), 150);
+    gtk_revealer_set_transition_type(GTK_REVEALER(search_revealer), GTK_REVEALER_TRANSITION_TYPE_NONE);
     gtk_revealer_set_reveal_child(GTK_REVEALER(search_revealer), FALSE);
 
     GtkWidget *search_entry = gtk_search_entry_new();
@@ -786,6 +838,16 @@ GtkWidget *solock_search_view_new(SolockApp *app)
     GtkEventController *mouse_ctrl = gtk_event_controller_motion_new();
     g_signal_connect(mouse_ctrl, "motion", G_CALLBACK(on_list_mouse_motion), sd);
     gtk_widget_add_controller(list_box, mouse_ctrl);
+
+    GtkEventController *entry_scroll_ctrl = GTK_EVENT_CONTROLLER(
+        gtk_event_controller_scroll_new(GTK_EVENT_CONTROLLER_SCROLL_VERTICAL));
+    g_signal_connect(entry_scroll_ctrl, "scroll", G_CALLBACK(on_entry_scroll), sd);
+    gtk_widget_add_controller(list_box, entry_scroll_ctrl);
+
+    GtkEventController *group_scroll_ctrl = GTK_EVENT_CONTROLLER(
+        gtk_event_controller_scroll_new(GTK_EVENT_CONTROLLER_SCROLL_HORIZONTAL));
+    g_signal_connect(group_scroll_ctrl, "scroll", G_CALLBACK(on_group_scroll), sd);
+    gtk_widget_add_controller(group_scroll, group_scroll_ctrl);
 
     return box;
 }
