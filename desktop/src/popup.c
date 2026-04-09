@@ -187,18 +187,26 @@ void solock_popup_switch_to_search(GtkWidget *popup)
     gtk_stack_set_visible_child_name(GTK_STACK(popup_data->stack), "search");
 }
 
+static gboolean touch_entry_idle(gpointer data)
+{
+    char *id = data;
+    if (popup_data) {
+        SolockClient *client = solock_app_get_client(popup_data->app);
+        JsonNode *fresh = solock_client_get_entry(client, id, NULL);
+        if (fresh) json_node_unref(fresh);
+    }
+    g_free(id);
+    return G_SOURCE_REMOVE;
+}
+
 void solock_popup_switch_to_detail(GtkWidget *popup, JsonNode *entry)
 {
     (void)popup;
     if (!popup_data) return;
 
     JsonObject *obj = json_node_get_object(entry);
-    if (json_object_has_member(obj, "id")) {
-        const char *id = json_object_get_string_member(obj, "id");
-        SolockClient *client = solock_app_get_client(popup_data->app);
-        JsonNode *fresh = solock_client_get_entry(client, id, NULL);
-        if (fresh) json_node_unref(fresh);
-    }
+    if (json_object_has_member(obj, "id"))
+        g_idle_add(touch_entry_idle, g_strdup(json_object_get_string_member(obj, "id")));
 
     remove_detail_view(popup_data);
 

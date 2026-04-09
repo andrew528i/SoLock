@@ -7,7 +7,7 @@ extern GtkWidget    *solock_app_get_popup(SolockApp *app);
 
 static const char LABEL_CHARS[] = "asdfghjkl;";
 static const int  LABEL_CHARS_LEN = 10;
-#define MAX_VISIBLE_ENTRIES 8
+#define MAX_VISIBLE_ENTRIES 6
 
 typedef struct {
     SolockApp  *app;
@@ -296,7 +296,6 @@ static void on_search_changed(GtkEditable *editable, gpointer data)
 {
     (void)editable;
     SearchData *sd = data;
-    gtk_widget_add_css_class(sd->list_box, "keyboard-nav");
     refresh_entries(sd);
 }
 
@@ -311,9 +310,7 @@ static void close_search(SearchData *sd)
 static void on_list_mouse_motion(GtkEventControllerMotion *ctrl,
                                  double x, double y, gpointer data)
 {
-    (void)ctrl; (void)x; (void)y;
-    SearchData *sd = data;
-    gtk_widget_remove_css_class(sd->list_box, "keyboard-nav");
+    (void)ctrl; (void)x; (void)y; (void)data;
 }
 
 static gboolean on_key_pressed(GtkEventControllerKey *ctrl, guint keyval,
@@ -321,8 +318,6 @@ static gboolean on_key_pressed(GtkEventControllerKey *ctrl, guint keyval,
 {
     (void)ctrl; (void)keycode;
     SearchData *sd = data;
-
-    gtk_widget_add_css_class(sd->list_box, "keyboard-nav");
 
     if (keyval == GDK_KEY_Control_L || keyval == GDK_KEY_Control_R) {
         sd->label_mode = TRUE;
@@ -782,7 +777,8 @@ GtkWidget *solock_search_view_new(SolockApp *app)
 {
     GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     GtkWidget *search_revealer = gtk_revealer_new();
-    gtk_revealer_set_transition_type(GTK_REVEALER(search_revealer), GTK_REVEALER_TRANSITION_TYPE_NONE);
+    gtk_revealer_set_transition_type(GTK_REVEALER(search_revealer), GTK_REVEALER_TRANSITION_TYPE_SLIDE_DOWN);
+    gtk_revealer_set_transition_duration(GTK_REVEALER(search_revealer), 0);
     gtk_revealer_set_reveal_child(GTK_REVEALER(search_revealer), FALSE);
 
     GtkWidget *search_entry = gtk_search_entry_new();
@@ -810,6 +806,7 @@ GtkWidget *solock_search_view_new(SolockApp *app)
     GtkWidget *list_box = gtk_list_box_new();
     gtk_list_box_set_selection_mode(GTK_LIST_BOX(list_box), GTK_SELECTION_SINGLE);
     gtk_widget_add_css_class(list_box, "entry-list");
+    gtk_widget_add_css_class(list_box, "keyboard-nav");
     gtk_widget_set_size_request(list_box, 320, -1);
     gtk_box_append(GTK_BOX(box), list_box);
 
