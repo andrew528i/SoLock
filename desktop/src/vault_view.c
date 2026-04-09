@@ -382,6 +382,18 @@ static void vault_rebuild_list(VaultData *vd)
     sort_json_array(arr, vd->sort_mode);
     guint len = json_array_get_length(arr);
 
+    gboolean has_any_color = FALSE;
+    if (vd->cached_groups && JSON_NODE_TYPE(vd->cached_groups) == JSON_NODE_ARRAY) {
+        JsonArray *garr = json_node_get_array(vd->cached_groups);
+        for (guint gi = 0; gi < json_array_get_length(garr); gi++) {
+            JsonObject *gobj = json_array_get_object_element(garr, gi);
+            if (json_object_has_member(gobj, "color") && !json_object_get_null_member(gobj, "color")) {
+                const char *c = json_object_get_string_member(gobj, "color");
+                if (c && *c) { has_any_color = TRUE; break; }
+            }
+        }
+    }
+
     for (guint i = 0; i < len; i++) {
         JsonObject *obj = json_array_get_object_element(arr, i);
 
@@ -414,19 +426,24 @@ static void vault_rebuild_list(VaultData *vd)
         gtk_widget_set_margin_bottom(row_box, 6);
         gtk_widget_set_size_request(row_box, -1, 48);
 
-        if (json_object_has_member(obj, "group_index") &&
-            !json_object_get_null_member(obj, "group_index")) {
-            int gi = (int)json_object_get_int_member(obj, "group_index");
-            const char *gc = vault_group_color_for_index(vd, gi);
+        if (has_any_color) {
+            const char *gc = NULL;
+            if (json_object_has_member(obj, "group_index") &&
+                !json_object_get_null_member(obj, "group_index")) {
+                int gi = (int)json_object_get_int_member(obj, "group_index");
+                gc = vault_group_color_for_index(vd, gi);
+            }
+            GtkWidget *dot = gtk_label_new("\xe2\x97\x8f");
+            gtk_widget_add_css_class(dot, "group-color-dot");
+            gtk_widget_set_valign(dot, GTK_ALIGN_CENTER);
             if (gc) {
-                GtkWidget *dot = gtk_label_new("\xe2\x97\x8f");
-                gtk_widget_add_css_class(dot, "group-color-dot");
                 char css_class[32];
                 g_snprintf(css_class, sizeof(css_class), "gc-%s", gc);
                 gtk_widget_add_css_class(dot, css_class);
-                gtk_widget_set_valign(dot, GTK_ALIGN_CENTER);
-                gtk_box_append(GTK_BOX(row_box), dot);
+            } else {
+                gtk_widget_set_opacity(dot, 0);
             }
+            gtk_box_append(GTK_BOX(row_box), dot);
         }
 
         GtkWidget *icon = gtk_image_new_from_icon_name(icon_for_type(type));

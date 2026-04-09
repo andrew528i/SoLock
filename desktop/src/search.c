@@ -538,6 +538,18 @@ static void refresh_entries(SearchData *sd)
     sort_entries_by_recent(arr);
     guint len = json_array_get_length(arr);
 
+    gboolean has_any_color = FALSE;
+    if (sd->active_group < 0 && sd->groups && JSON_NODE_TYPE(sd->groups) == JSON_NODE_ARRAY) {
+        JsonArray *garr = json_node_get_array(sd->groups);
+        for (guint gi = 0; gi < json_array_get_length(garr); gi++) {
+            JsonObject *gobj = json_array_get_object_element(garr, gi);
+            if (json_object_has_member(gobj, "color") && !json_object_get_null_member(gobj, "color")) {
+                const char *c = json_object_get_string_member(gobj, "color");
+                if (c && *c) { has_any_color = TRUE; break; }
+            }
+        }
+    }
+
     guint visible_count = 0;
     for (guint i = 0; i < len; i++) {
         JsonObject *obj = json_array_get_object_element(arr, i);
@@ -588,21 +600,25 @@ static void refresh_entries(SearchData *sd)
         }
         gtk_box_append(GTK_BOX(row_box), hint_revealer);
 
-        if (sd->active_group < 0 &&
-            json_object_has_member(obj, "group_index") &&
-            !json_object_get_null_member(obj, "group_index")) {
-            int gi = (int)json_object_get_int_member(obj, "group_index");
-            const char *gc = group_color_for_index(sd, gi);
+        if (has_any_color) {
+            const char *gc = NULL;
+            if (json_object_has_member(obj, "group_index") &&
+                !json_object_get_null_member(obj, "group_index")) {
+                int gi = (int)json_object_get_int_member(obj, "group_index");
+                gc = group_color_for_index(sd, gi);
+            }
+            GtkWidget *dot = gtk_label_new("\xe2\x97\x8f");
+            gtk_widget_add_css_class(dot, "group-color-dot");
+            gtk_widget_set_valign(dot, GTK_ALIGN_CENTER);
+            gtk_widget_set_margin_start(dot, 6);
             if (gc) {
-                GtkWidget *dot = gtk_label_new("\xe2\x97\x8f");
-                gtk_widget_add_css_class(dot, "group-color-dot");
                 char css_class[32];
                 g_snprintf(css_class, sizeof(css_class), "gc-%s", gc);
                 gtk_widget_add_css_class(dot, css_class);
-                gtk_widget_set_valign(dot, GTK_ALIGN_CENTER);
-                gtk_widget_set_margin_start(dot, 6);
-                gtk_box_append(GTK_BOX(row_box), dot);
+            } else {
+                gtk_widget_set_opacity(dot, 0);
             }
+            gtk_box_append(GTK_BOX(row_box), dot);
         }
 
         GtkWidget *icon = gtk_image_new_from_icon_name(icon_for_type(type));
@@ -718,7 +734,8 @@ GtkWidget *solock_search_view_new(SolockApp *app)
 
     GtkWidget *group_scroll = gtk_scrolled_window_new();
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(group_scroll),
-                                   GTK_POLICY_EXTERNAL, GTK_POLICY_NEVER);
+                                   GTK_POLICY_AUTOMATIC, GTK_POLICY_NEVER);
+    gtk_widget_add_css_class(group_scroll, "no-scrollbar");
     gtk_widget_set_size_request(group_scroll, -1, -1);
 
     GtkWidget *group_bar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
@@ -731,7 +748,8 @@ GtkWidget *solock_search_view_new(SolockApp *app)
     gtk_box_append(GTK_BOX(box), group_scroll);
 
     GtkWidget *scroll = gtk_scrolled_window_new();
-    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll), GTK_POLICY_NEVER, GTK_POLICY_EXTERNAL);
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
+    gtk_widget_add_css_class(scroll, "no-scrollbar");
     gtk_scrolled_window_set_max_content_height(GTK_SCROLLED_WINDOW(scroll), 320);
     gtk_scrolled_window_set_propagate_natural_height(GTK_SCROLLED_WINDOW(scroll), TRUE);
     gtk_widget_set_vexpand(scroll, FALSE);
@@ -741,6 +759,7 @@ GtkWidget *solock_search_view_new(SolockApp *app)
     gtk_list_box_set_selection_mode(GTK_LIST_BOX(list_box), GTK_SELECTION_SINGLE);
     gtk_widget_add_css_class(list_box, "entry-list");
     gtk_widget_set_margin_top(list_box, 6);
+    gtk_widget_set_margin_bottom(list_box, 4);
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scroll), list_box);
     gtk_box_append(GTK_BOX(box), scroll);
 
