@@ -296,6 +296,11 @@ static void on_search_changed(GtkEditable *editable, gpointer data)
 {
     (void)editable;
     SearchData *sd = data;
+    const char *text = gtk_editable_get_text(GTK_EDITABLE(sd->search_entry));
+    if (!text || !*text) {
+        gtk_revealer_set_reveal_child(GTK_REVEALER(sd->search_revealer), FALSE);
+        gtk_widget_grab_focus(sd->list_box);
+    }
     refresh_entries(sd);
 }
 
