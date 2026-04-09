@@ -242,7 +242,7 @@ func (a *App) addGroup(name string) tea.Cmd {
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
-		_, err := a.app.AddGroup.Execute(ctx, name)
+		_, err := a.app.AddGroup.Execute(ctx, name, "")
 		return groupAddedMsg{err: err}
 	}
 }

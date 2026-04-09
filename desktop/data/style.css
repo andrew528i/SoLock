@@ -257,6 +257,45 @@ preferencesgroup > box > label {
     background: rgba(127, 187, 179, 0.22);
 }
 
+.group-color-dot {
+    font-size: 8px;
+    min-width: 0;
+}
+
+.group-chip-dot {
+    font-size: 7px;
+    min-width: 0;
+}
+
+.color-circle {
+    font-size: 16px;
+    min-width: 24px;
+    min-height: 24px;
+    padding: 0;
+    border-radius: 12px;
+    opacity: 0.6;
+    transition: all 100ms ease;
+}
+
+.color-circle:hover {
+    opacity: 0.85;
+}
+
+.color-circle-active {
+    opacity: 1;
+    text-shadow: 0 0 6px currentColor;
+}
+
+.gc-red    { color: #e67e80; }
+.gc-orange { color: #e69875; }
+.gc-yellow { color: #dbbc7f; }
+.gc-green  { color: #a7c080; }
+.gc-teal   { color: #7fbbb3; }
+.gc-blue   { color: #7393b3; }
+.gc-purple { color: #d196b3; }
+.gc-pink   { color: #d699b6; }
+.gc-gray   { color: #859289; }
+
 .vault-list-panel {
     background-color: @view_bg_color;
 }

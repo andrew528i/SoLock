@@ -80,15 +80,28 @@ static void rebuild_group_bar(SearchData *sd)
 
         const char *name = json_object_get_string_member(obj, "name");
         int index = (int)json_object_get_int_member(obj, "index");
+        const char *color = NULL;
+        if (json_object_has_member(obj, "color") && !json_object_get_null_member(obj, "color"))
+            color = json_object_get_string_member(obj, "color");
 
-        GtkWidget *btn = gtk_button_new_with_label(name);
+        GtkWidget *btn = gtk_button_new();
+        GtkWidget *btn_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);
+        if (color && *color) {
+            GtkWidget *chip_dot = gtk_label_new("\xe2\x97\x8f");
+            gtk_widget_add_css_class(chip_dot, "group-chip-dot");
+            char css_class[32];
+            g_snprintf(css_class, sizeof(css_class), "gc-%s", color);
+            gtk_widget_add_css_class(chip_dot, css_class);
+            gtk_box_append(GTK_BOX(btn_box), chip_dot);
+        }
+        GtkWidget *chip_label = gtk_label_new(name);
+        gtk_label_set_ellipsize(GTK_LABEL(chip_label), PANGO_ELLIPSIZE_END);
+        gtk_label_set_max_width_chars(GTK_LABEL(chip_label), 16);
+        gtk_box_append(GTK_BOX(btn_box), chip_label);
+        gtk_button_set_child(GTK_BUTTON(btn), btn_box);
+
         gtk_widget_add_css_class(btn, "flat");
         gtk_widget_add_css_class(btn, "group-chip");
-        gtk_label_set_ellipsize(
-            GTK_LABEL(gtk_button_get_child(GTK_BUTTON(btn))),
-            PANGO_ELLIPSIZE_END);
-        gtk_label_set_max_width_chars(
-            GTK_LABEL(gtk_button_get_child(GTK_BUTTON(btn))), 16);
         if (sd->active_group == index)
             gtk_widget_add_css_class(btn, "group-chip-active");
         g_object_set_data(G_OBJECT(btn), "group-idx", GINT_TO_POINTER(index));
@@ -237,7 +250,9 @@ static void on_row_activated(GtkListBox *list_box, GtkListBoxRow *row, gpointer 
 {
     (void)list_box;
     SearchData *sd = data;
-    int idx = gtk_list_box_row_get_index(row);
+    GtkWidget *child = gtk_list_box_row_get_child(row);
+    if (!child) return;
+    int idx = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(child), "entry-index"));
     activate_entry_at_index(sd, idx);
 }
 
@@ -285,9 +300,16 @@ static gboolean on_key_pressed(GtkEventControllerKey *ctrl, guint keyval,
     }
 
     if (state & GDK_CONTROL_MASK) {
-        int idx = index_for_label_char(keyval);
-        if (idx >= 0) {
-            activate_entry_at_index(sd, idx);
+        int label_idx = index_for_label_char(keyval);
+        if (label_idx >= 0) {
+            GtkListBoxRow *row = gtk_list_box_get_row_at_index(GTK_LIST_BOX(sd->list_box), label_idx);
+            if (row) {
+                GtkWidget *child = gtk_list_box_row_get_child(row);
+                if (child) {
+                    int entry_idx = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(child), "entry-index"));
+                    activate_entry_at_index(sd, entry_idx);
+                }
+            }
             return TRUE;
         }
     }
@@ -384,6 +406,24 @@ static void on_key_released(GtkEventControllerKey *ctrl, guint keyval,
     }
 }
 
+static const char *group_color_for_index(SearchData *sd, int group_idx)
+{
+    if (group_idx < 0 || !sd->groups || JSON_NODE_TYPE(sd->groups) != JSON_NODE_ARRAY)
+        return NULL;
+    JsonArray *garr = json_node_get_array(sd->groups);
+    for (guint i = 0; i < json_array_get_length(garr); i++) {
+        JsonObject *gobj = json_array_get_object_element(garr, i);
+        if ((int)json_object_get_int_member(gobj, "index") == group_idx) {
+            if (json_object_has_member(gobj, "color") && !json_object_get_null_member(gobj, "color")) {
+                const char *c = json_object_get_string_member(gobj, "color");
+                return (c && *c) ? c : NULL;
+            }
+            return NULL;
+        }
+    }
+    return NULL;
+}
+
 static void refresh_entries(SearchData *sd)
 {
     GtkWidget *child;
@@ -406,6 +446,8 @@ static void refresh_entries(SearchData *sd)
 
     if (error) {
         g_warning("Failed to fetch entries: %s", error->message);
+        if (solock_client_is_locked(client))
+            solock_tray_update_status(sd->app, TRUE);
         g_error_free(error);
     }
 
@@ -474,7 +516,7 @@ static void refresh_entries(SearchData *sd)
         gtk_widget_set_margin_bottom(row_box, 4);
         gtk_widget_set_size_request(row_box, -1, 48);
 
-        char lbl_char = label_char_for_index(i);
+        char lbl_char = label_char_for_index(visible_count);
         GtkWidget *hint_revealer = gtk_revealer_new();
         gtk_revealer_set_transition_type(GTK_REVEALER(hint_revealer), GTK_REVEALER_TRANSITION_TYPE_SLIDE_RIGHT);
         gtk_revealer_set_transition_duration(GTK_REVEALER(hint_revealer), 100);
@@ -489,6 +531,23 @@ static void refresh_entries(SearchData *sd)
             gtk_revealer_set_child(GTK_REVEALER(hint_revealer), hint);
         }
         gtk_box_append(GTK_BOX(row_box), hint_revealer);
+
+        if (sd->active_group < 0 &&
+            json_object_has_member(obj, "group_index") &&
+            !json_object_get_null_member(obj, "group_index")) {
+            int gi = (int)json_object_get_int_member(obj, "group_index");
+            const char *gc = group_color_for_index(sd, gi);
+            if (gc) {
+                GtkWidget *dot = gtk_label_new("\xe2\x97\x8f");
+                gtk_widget_add_css_class(dot, "group-color-dot");
+                char css_class[32];
+                g_snprintf(css_class, sizeof(css_class), "gc-%s", gc);
+                gtk_widget_add_css_class(dot, css_class);
+                gtk_widget_set_valign(dot, GTK_ALIGN_CENTER);
+                gtk_widget_set_margin_start(dot, 6);
+                gtk_box_append(GTK_BOX(row_box), dot);
+            }
+        }
 
         GtkWidget *icon = gtk_image_new_from_icon_name(icon_for_type(type));
         gtk_image_set_pixel_size(GTK_IMAGE(icon), 18);
@@ -527,6 +586,7 @@ static void refresh_entries(SearchData *sd)
             gtk_box_append(GTK_BOX(row_box), totp_indicator);
         }
 
+        g_object_set_data(G_OBJECT(row_box), "entry-index", GINT_TO_POINTER((int)i));
         gtk_list_box_append(GTK_LIST_BOX(sd->list_box), row_box);
         visible_count++;
     }

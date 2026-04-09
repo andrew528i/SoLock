@@ -204,6 +204,9 @@ JsonNode *solock_client_call(SolockClient *c, const char *method, JsonNode *para
     if (json_object_has_member(resp_obj, "error")) {
         JsonObject *err_obj = json_object_get_object_member(resp_obj, "error");
         const char *msg = json_object_get_string_member(err_obj, "message");
+        gint64 code = json_object_get_int_member(err_obj, "code");
+        if (code == -32000)
+            c->locked = TRUE;
         g_set_error(error, G_IO_ERROR, G_IO_ERROR_FAILED, "%s", msg);
         json_node_unref(resp);
         return NULL;
@@ -440,12 +443,16 @@ JsonNode *solock_client_list_groups(SolockClient *c, GError **error)
     return solock_client_call(c, "list_groups", NULL, error);
 }
 
-gboolean solock_client_add_group(SolockClient *c, const char *name, GError **error)
+gboolean solock_client_add_group(SolockClient *c, const char *name, const char *color, GError **error)
 {
     JsonBuilder *b = json_builder_new();
     json_builder_begin_object(b);
     json_builder_set_member_name(b, "name");
     json_builder_add_string_value(b, name);
+    if (color && *color) {
+        json_builder_set_member_name(b, "color");
+        json_builder_add_string_value(b, color);
+    }
     json_builder_end_object(b);
     JsonNode *params = json_builder_get_root(b);
 
@@ -457,7 +464,7 @@ gboolean solock_client_add_group(SolockClient *c, const char *name, GError **err
     return ok;
 }
 
-gboolean solock_client_update_group(SolockClient *c, int index, const char *name, GError **error)
+gboolean solock_client_update_group(SolockClient *c, int index, const char *name, const char *color, GError **error)
 {
     JsonBuilder *b = json_builder_new();
     json_builder_begin_object(b);
@@ -465,6 +472,8 @@ gboolean solock_client_update_group(SolockClient *c, int index, const char *name
     json_builder_add_int_value(b, index);
     json_builder_set_member_name(b, "name");
     json_builder_add_string_value(b, name);
+    json_builder_set_member_name(b, "color");
+    json_builder_add_string_value(b, color ? color : "");
     json_builder_end_object(b);
     JsonNode *params = json_builder_get_root(b);
 

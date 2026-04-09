@@ -31,8 +31,11 @@ type AddGroupResult struct {
 	Group   *domain.Group
 }
 
-func (uc *AddGroupUseCase) Execute(ctx context.Context, name string) (*AddGroupResult, error) {
+func (uc *AddGroupUseCase) Execute(ctx context.Context, name string, color domain.GroupColor) (*AddGroupResult, error) {
 	if err := domain.ValidateGroupName(name); err != nil {
+		return nil, err
+	}
+	if err := domain.ValidateGroupColor(color); err != nil {
 		return nil, err
 	}
 
@@ -45,6 +48,9 @@ func (uc *AddGroupUseCase) Execute(ctx context.Context, name string) (*AddGroupR
 	group, err := domain.NewGroup(slot, name)
 	if err != nil {
 		return nil, err
+	}
+	if color != "" {
+		group.SetColor(color)
 	}
 
 	encrypted, err := uc.encryptGroup(group)

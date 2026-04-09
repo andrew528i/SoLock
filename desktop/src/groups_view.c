@@ -3,6 +3,10 @@
 
 extern SolockClient *solock_app_get_client(SolockApp *app);
 
+static const char *group_colors[] = {
+    "red", "orange", "yellow", "green", "teal", "blue", "purple", "pink", "gray", NULL
+};
+
 typedef struct {
     SolockApp     *app;
     GtkListBox    *list_box;
@@ -10,6 +14,8 @@ typedef struct {
     GtkWidget     *spinner;
     GtkStack      *view_stack;
     GtkEntry      *name_entry;
+    GtkWidget     *color_bar;
+    char          *selected_color;
     int            edit_index;
 } GroupsData;
 
@@ -21,6 +27,7 @@ typedef struct {
     int         index;
     gboolean    deleted;
     char       *name;
+    char       *color;
 } RowActionData;
 
 static void row_action_data_free(gpointer data, GClosure *closure)
@@ -28,7 +35,34 @@ static void row_action_data_free(gpointer data, GClosure *closure)
     (void)closure;
     RowActionData *ra = data;
     g_free(ra->name);
+    g_free(ra->color);
     g_free(ra);
+}
+
+static void update_color_bar_selection(GroupsData *gd)
+{
+    for (GtkWidget *child = gtk_widget_get_first_child(gd->color_bar);
+         child != NULL;
+         child = gtk_widget_get_next_sibling(child)) {
+        const char *c = g_object_get_data(G_OBJECT(child), "color-name");
+        if (!c) continue;
+        if (gd->selected_color && g_strcmp0(c, gd->selected_color) == 0)
+            gtk_widget_add_css_class(child, "color-circle-active");
+        else
+            gtk_widget_remove_css_class(child, "color-circle-active");
+    }
+}
+
+static void on_color_circle_clicked(GtkGestureClick *gesture, int n_press, double x, double y, gpointer data)
+{
+    (void)gesture; (void)n_press; (void)x; (void)y;
+    GroupsData *gd = data;
+    GtkWidget *widget = gtk_event_controller_get_widget(GTK_EVENT_CONTROLLER(gesture));
+    const char *color = g_object_get_data(G_OBJECT(widget), "color-name");
+    gboolean same = gd->selected_color && g_strcmp0(gd->selected_color, color) == 0;
+    g_free(gd->selected_color);
+    gd->selected_color = same ? NULL : g_strdup(color);
+    update_color_bar_selection(gd);
 }
 
 static void on_row_edit(GtkButton *btn, gpointer data)
@@ -37,6 +71,9 @@ static void on_row_edit(GtkButton *btn, gpointer data)
     RowActionData *ra = data;
     ra->gd->edit_index = ra->index;
     gtk_editable_set_text(GTK_EDITABLE(ra->gd->name_entry), ra->name ? ra->name : "");
+    g_free(ra->gd->selected_color);
+    ra->gd->selected_color = g_strdup(ra->color);
+    update_color_bar_selection(ra->gd);
     gtk_stack_set_visible_child_name(ra->gd->view_stack, "edit");
     gtk_widget_grab_focus(GTK_WIDGET(ra->gd->name_entry));
 }
@@ -72,6 +109,9 @@ static void on_add_clicked(GtkButton *btn, gpointer data)
     GroupsData *gd = data;
     gd->edit_index = -1;
     gtk_editable_set_text(GTK_EDITABLE(gd->name_entry), "");
+    g_free(gd->selected_color);
+    gd->selected_color = NULL;
+    update_color_bar_selection(gd);
     gtk_stack_set_visible_child_name(gd->view_stack, "edit");
     gtk_widget_grab_focus(GTK_WIDGET(gd->name_entry));
 }
@@ -98,9 +138,9 @@ static void on_save_clicked(GtkButton *btn, gpointer data)
 
     GError *error = NULL;
     if (gd->edit_index < 0) {
-        solock_client_add_group(client, name, &error);
+        solock_client_add_group(client, name, gd->selected_color, &error);
     } else {
-        solock_client_update_group(client, gd->edit_index, name, &error);
+        solock_client_update_group(client, gd->edit_index, name, gd->selected_color, &error);
     }
 
     groups_show_spinner(gd, FALSE);
@@ -110,6 +150,8 @@ static void on_save_clicked(GtkButton *btn, gpointer data)
         g_error_free(error);
     }
 
+    g_free(gd->selected_color);
+    gd->selected_color = NULL;
     gtk_stack_set_visible_child_name(gd->view_stack, "list");
     refresh_groups(gd);
 }
@@ -152,12 +194,25 @@ static void refresh_groups(GroupsData *gd)
         const char *name = json_object_get_string_member(obj, "name");
         int index = (int)json_object_get_int_member(obj, "index");
         gboolean deleted = json_object_get_boolean_member(obj, "deleted");
+        const char *color = NULL;
+        if (json_object_has_member(obj, "color") && !json_object_get_null_member(obj, "color"))
+            color = json_object_get_string_member(obj, "color");
 
         GtkWidget *row_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
         gtk_widget_set_margin_start(row_box, 8);
         gtk_widget_set_margin_end(row_box, 8);
         gtk_widget_set_margin_top(row_box, 6);
         gtk_widget_set_margin_bottom(row_box, 6);
+
+        if (color && *color && !deleted) {
+            GtkWidget *dot = gtk_label_new("\xe2\x97\x8f");
+            gtk_widget_add_css_class(dot, "group-color-dot");
+            char css_class[32];
+            g_snprintf(css_class, sizeof(css_class), "gc-%s", color);
+            gtk_widget_add_css_class(dot, css_class);
+            gtk_widget_set_valign(dot, GTK_ALIGN_CENTER);
+            gtk_box_append(GTK_BOX(row_box), dot);
+        }
 
         GtkWidget *icon = gtk_image_new_from_icon_name(
             deleted ? "user-trash-symbolic" : "folder-symbolic");
@@ -182,6 +237,7 @@ static void refresh_groups(GroupsData *gd)
             edit_data->gd = gd;
             edit_data->index = index;
             edit_data->name = g_strdup(name);
+            edit_data->color = g_strdup(color);
             GtkWidget *edit_btn = gtk_button_new_from_icon_name("document-edit-symbolic");
             gtk_widget_add_css_class(edit_btn, "flat");
             gtk_widget_set_tooltip_text(edit_btn, "Rename");
@@ -288,6 +344,27 @@ GtkWidget *solock_groups_view_new(SolockApp *app)
     gtk_entry_set_placeholder_text(GTK_ENTRY(name_entry), "e.g. Work, Personal");
     gd->name_entry = GTK_ENTRY(name_entry);
     gtk_box_append(GTK_BOX(edit_page), name_entry);
+
+    GtkWidget *color_label = gtk_label_new("Color");
+    gtk_label_set_xalign(GTK_LABEL(color_label), 0);
+    gtk_box_append(GTK_BOX(edit_page), color_label);
+
+    GtkWidget *color_bar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
+    gtk_widget_set_margin_top(color_bar, 2);
+    gd->color_bar = color_bar;
+    for (int ci = 0; group_colors[ci]; ci++) {
+        GtkWidget *circle = gtk_label_new("\xe2\x97\x8f");
+        gtk_widget_add_css_class(circle, "color-circle");
+        char css_class[32];
+        g_snprintf(css_class, sizeof(css_class), "gc-%s", group_colors[ci]);
+        gtk_widget_add_css_class(circle, css_class);
+        g_object_set_data(G_OBJECT(circle), "color-name", (gpointer)group_colors[ci]);
+        GtkGesture *click = gtk_gesture_click_new();
+        g_signal_connect(click, "pressed", G_CALLBACK(on_color_circle_clicked), gd);
+        gtk_widget_add_controller(circle, GTK_EVENT_CONTROLLER(click));
+        gtk_box_append(GTK_BOX(color_bar), circle);
+    }
+    gtk_box_append(GTK_BOX(edit_page), color_bar);
 
     GtkWidget *btn_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
     gtk_widget_set_margin_top(btn_box, 12);

@@ -591,7 +591,7 @@ func (r *SolanaVaultRepo) send(ctx context.Context, ix solana.Instruction) error
 			return nil
 		}
 	}
-	return nil
+	return fmt.Errorf("tx confirmation timeout: %s", sig)
 }
 
 func (r *SolanaVaultRepo) parseVaultMeta(data []byte) (*domain.VaultMeta, error) {

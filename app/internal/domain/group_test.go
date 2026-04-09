@@ -130,6 +130,68 @@ func TestGroupJSONDoesNotIncludeIndex(t *testing.T) {
 	}
 }
 
+func TestGroupSetColor(t *testing.T) {
+	g, _ := NewGroup(0, "Work")
+	if g.Color() != "" {
+		t.Error("new group should have empty color")
+	}
+
+	g.SetColor("blue")
+	if g.Color() != "blue" {
+		t.Errorf("expected 'blue', got %q", g.Color())
+	}
+
+	g.SetColor("")
+	if g.Color() != "" {
+		t.Error("color should be cleared")
+	}
+}
+
+func TestGroupColorValidation(t *testing.T) {
+	valid := []GroupColor{GroupColorRed, GroupColorOrange, GroupColorYellow, GroupColorGreen, GroupColorTeal, GroupColorBlue, GroupColorPurple, GroupColorPink, GroupColorGray, ""}
+	for _, c := range valid {
+		if err := ValidateGroupColor(c); err != nil {
+			t.Errorf("color %q should be valid, got error: %v", c, err)
+		}
+	}
+
+	invalid := []GroupColor{"black", "white", "RED", "Blue", "#ff0000", "random"}
+	for _, c := range invalid {
+		if err := ValidateGroupColor(c); err == nil {
+			t.Errorf("color %q should be invalid", c)
+		}
+	}
+}
+
+func TestGroupColorJSON(t *testing.T) {
+	g, _ := NewGroup(0, "Work")
+	g.SetColor("teal")
+
+	data, err := json.Marshal(g)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	var restored Group
+	if err := json.Unmarshal(data, &restored); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if restored.Color() != "teal" {
+		t.Errorf("expected color 'teal', got %q", restored.Color())
+	}
+}
+
+func TestGroupColorJSONOmitsEmpty(t *testing.T) {
+	g, _ := NewGroup(0, "Work")
+
+	data, _ := json.Marshal(g)
+	var raw map[string]any
+	json.Unmarshal(data, &raw)
+	if _, ok := raw["color"]; ok {
+		t.Error("color should be omitted from JSON when empty")
+	}
+}
+
 func TestEntryGroupIndex(t *testing.T) {
 	e, _ := NewEntry("id-1", EntryTypePassword, "Test", map[string]string{
 		"username": "user",

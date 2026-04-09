@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"go.uber.org/mock/gomock"
@@ -28,7 +29,7 @@ func TestAddGroupSuccess(t *testing.T) {
 	vault.EXPECT().AddGroup(gomock.Any(), uint32(0), gomock.Any()).Return(nil)
 	groups.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
 
-	result, err := uc.Execute(context.Background(), "Work")
+	result, err := uc.Execute(context.Background(), "Work", "")
 	if err != nil {
 		t.Fatalf("execute: %v", err)
 	}
@@ -55,7 +56,7 @@ func TestAddGroupAllocatesCorrectSlot(t *testing.T) {
 	vault.EXPECT().AddGroup(gomock.Any(), uint32(5), gomock.Any()).Return(nil)
 	groups.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
 
-	result, err := uc.Execute(context.Background(), "Finance")
+	result, err := uc.Execute(context.Background(), "Finance", "")
 	if err != nil {
 		t.Fatalf("execute: %v", err)
 	}
@@ -72,7 +73,7 @@ func TestAddGroupValidation(t *testing.T) {
 
 	uc := NewAddGroupUseCase(groups, vault, crypto)
 
-	_, err := uc.Execute(context.Background(), "")
+	_, err := uc.Execute(context.Background(), "", "")
 	if err == nil {
 		t.Error("expected error for empty name")
 	}
@@ -88,7 +89,7 @@ func TestAddGroupVaultError(t *testing.T) {
 
 	vault.EXPECT().GetMeta(gomock.Any()).Return(nil, fmt.Errorf("connection error"))
 
-	_, err := uc.Execute(context.Background(), "Test")
+	_, err := uc.Execute(context.Background(), "Test", "")
 	if err == nil {
 		t.Error("expected error when vault fails")
 	}
@@ -246,6 +247,26 @@ func TestPurgeGroupNotDeleted(t *testing.T) {
 	_, err := uc.Execute(context.Background(), 0)
 	if err == nil {
 		t.Error("expected error when purging non-deleted group")
+	}
+}
+
+func TestAddGroupOnChainError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	groups := mock.NewMockGroupRepository(ctrl)
+	vault := mock.NewMockVaultRepository(ctrl)
+	crypto := testCrypto()
+
+	uc := NewAddGroupUseCase(groups, vault, crypto)
+
+	vault.EXPECT().GetMeta(gomock.Any()).Return(&domain.VaultMeta{NextGroupIndex: 3}, nil)
+	vault.EXPECT().AddGroup(gomock.Any(), uint32(3), gomock.Any()).Return(fmt.Errorf("tx confirmation timeout: FakeSig"))
+
+	_, err := uc.Execute(context.Background(), "Finance", "")
+	if err == nil {
+		t.Fatal("expected error when on-chain transaction fails")
+	}
+	if !strings.Contains(err.Error(), "tx confirmation timeout") {
+		t.Errorf("expected timeout error, got: %v", err)
 	}
 }
 

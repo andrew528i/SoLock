@@ -30,8 +30,8 @@ gboolean      solock_client_update_entry(SolockClient *client, const char *id, c
 gboolean      solock_client_delete_entry(SolockClient *client, const char *id, GError **error);
 gboolean      solock_client_sync(SolockClient *client, GError **error);
 JsonNode     *solock_client_list_groups(SolockClient *client, GError **error);
-gboolean      solock_client_add_group(SolockClient *client, const char *name, GError **error);
-gboolean      solock_client_update_group(SolockClient *client, int index, const char *name, GError **error);
+gboolean      solock_client_add_group(SolockClient *client, const char *name, const char *color, GError **error);
+gboolean      solock_client_update_group(SolockClient *client, int index, const char *name, const char *color, GError **error);
 gboolean      solock_client_delete_group(SolockClient *client, int index, gboolean delete_entries, GError **error);
 gboolean      solock_client_purge_group(SolockClient *client, int index, GError **error);
 gboolean      solock_client_deploy_program(SolockClient *client, GError **error);

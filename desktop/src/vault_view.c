@@ -134,6 +134,7 @@ static void vault_refresh_group_dropdown(VaultData *vd, GtkWidget *dropdown);
 static void vault_populate_group_dropdown(VaultData *vd, GtkWidget *dropdown, const char *first_label);
 static int  vault_get_group_index_from_dropdown(VaultData *vd, GtkWidget *dropdown);
 static const char *vault_group_name_for_index(VaultData *vd, int group_idx);
+static const char *vault_group_color_for_index(VaultData *vd, int group_idx);
 static void on_group_filter_changed(GtkDropDown *dropdown, GParamSpec *pspec, gpointer data);
 static void vault_show_detail(VaultData *vd, JsonObject *obj);
 static void vault_clear_detail(VaultData *vd);
@@ -191,9 +192,11 @@ static void on_entry_row_activated(GtkListBox *list_box, GtkListBoxRow *row, gpo
     VaultData *vd = data;
     if (!row || !vd->entries) return;
 
-    int idx = gtk_list_box_row_get_index(row);
+    GtkWidget *child = gtk_list_box_row_get_child(row);
+    if (!child) return;
+    int idx = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(child), "entry-index"));
     JsonArray *arr = json_node_get_array(vd->entries);
-    if ((guint)idx >= json_array_get_length(arr)) return;
+    if (idx < 0 || (guint)idx >= json_array_get_length(arr)) return;
 
     JsonObject *obj = json_array_get_object_element(arr, idx);
     vault_show_detail(vd, obj);
@@ -365,6 +368,8 @@ static void vault_rebuild_list(VaultData *vd)
 
     if (error) {
         g_warning("Failed to list entries: %s", error->message);
+        if (solock_client_is_locked(client))
+            solock_tray_update_status(vd->app, TRUE);
         g_error_free(error);
     }
 
@@ -408,6 +413,21 @@ static void vault_rebuild_list(VaultData *vd)
         gtk_widget_set_margin_top(row_box, 6);
         gtk_widget_set_margin_bottom(row_box, 6);
         gtk_widget_set_size_request(row_box, -1, 48);
+
+        if (json_object_has_member(obj, "group_index") &&
+            !json_object_get_null_member(obj, "group_index")) {
+            int gi = (int)json_object_get_int_member(obj, "group_index");
+            const char *gc = vault_group_color_for_index(vd, gi);
+            if (gc) {
+                GtkWidget *dot = gtk_label_new("\xe2\x97\x8f");
+                gtk_widget_add_css_class(dot, "group-color-dot");
+                char css_class[32];
+                g_snprintf(css_class, sizeof(css_class), "gc-%s", gc);
+                gtk_widget_add_css_class(dot, css_class);
+                gtk_widget_set_valign(dot, GTK_ALIGN_CENTER);
+                gtk_box_append(GTK_BOX(row_box), dot);
+            }
+        }
 
         GtkWidget *icon = gtk_image_new_from_icon_name(icon_for_type(type));
         gtk_image_set_pixel_size(GTK_IMAGE(icon), 18);
@@ -458,6 +478,7 @@ static void vault_rebuild_list(VaultData *vd)
         gtk_widget_set_margin_bottom(type_badge, 2);
         gtk_box_append(GTK_BOX(row_box), type_badge);
 
+        g_object_set_data(G_OBJECT(row_box), "entry-index", GINT_TO_POINTER((int)i));
         gtk_list_box_append(GTK_LIST_BOX(vd->list_box), row_box);
     }
 
@@ -592,6 +613,26 @@ static const char *vault_group_name_for_index(VaultData *vd, int group_idx)
         }
     }
     return "[deleted]";
+}
+
+static const char *vault_group_color_for_index(VaultData *vd, int group_idx)
+{
+    if (group_idx < 0) return NULL;
+    if (!vd->cached_groups || JSON_NODE_TYPE(vd->cached_groups) != JSON_NODE_ARRAY)
+        return NULL;
+
+    JsonArray *arr = json_node_get_array(vd->cached_groups);
+    for (guint i = 0; i < json_array_get_length(arr); i++) {
+        JsonObject *obj = json_array_get_object_element(arr, i);
+        if ((int)json_object_get_int_member(obj, "index") == group_idx) {
+            if (json_object_has_member(obj, "color") && !json_object_get_null_member(obj, "color")) {
+                const char *c = json_object_get_string_member(obj, "color");
+                return (c && *c) ? c : NULL;
+            }
+            return NULL;
+        }
+    }
+    return NULL;
 }
 
 static void vault_show_detail(VaultData *vd, JsonObject *obj)

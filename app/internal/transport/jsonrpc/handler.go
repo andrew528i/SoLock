@@ -475,7 +475,8 @@ func (h *Handler) handleListGroups(req *Request) *Response {
 
 func (h *Handler) handleAddGroup(req *Request) *Response {
 	var params struct {
-		Name string `json:"name"`
+		Name  string `json:"name"`
+		Color string `json:"color"`
 	}
 	if err := json.Unmarshal(req.Params, &params); err != nil {
 		return errorResponse(req.ID, ErrCodeParse, "invalid params")
@@ -487,7 +488,7 @@ func (h *Handler) handleAddGroup(req *Request) *Response {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	result, err := h.app.AddGroup.Execute(ctx, params.Name)
+	result, err := h.app.AddGroup.Execute(ctx, params.Name, domain.GroupColor(params.Color))
 	if err != nil {
 		return errorResponse(req.ID, ErrCodeInternal, err.Error())
 	}
@@ -499,8 +500,9 @@ func (h *Handler) handleAddGroup(req *Request) *Response {
 
 func (h *Handler) handleUpdateGroup(req *Request) *Response {
 	var params struct {
-		Index uint32 `json:"index"`
-		Name  string `json:"name"`
+		Index uint32  `json:"index"`
+		Name  string  `json:"name"`
+		Color *string `json:"color"`
 	}
 	if err := json.Unmarshal(req.Params, &params); err != nil {
 		return errorResponse(req.ID, ErrCodeParse, "invalid params")
@@ -521,6 +523,13 @@ func (h *Handler) handleUpdateGroup(req *Request) *Response {
 	}
 
 	target.SetName(params.Name)
+	if params.Color != nil {
+		c := domain.GroupColor(*params.Color)
+		if err := domain.ValidateGroupColor(c); err != nil {
+			return errorResponse(req.ID, ErrCodeInvalidReq, err.Error())
+		}
+		target.SetColor(c)
+	}
 	result, err := h.app.UpdateGroup.Execute(ctx, target)
 	if err != nil {
 		return errorResponse(req.ID, ErrCodeInternal, err.Error())
@@ -615,17 +624,19 @@ func entriesToJSON(entries []*domain.Entry) []*entryJSON {
 }
 
 type groupJSON2 struct {
-	Index     uint32 `json:"index"`
-	Name      string `json:"name"`
-	Deleted   bool   `json:"deleted"`
-	CreatedAt int64  `json:"created_at"`
-	UpdatedAt int64  `json:"updated_at"`
+	Index     uint32           `json:"index"`
+	Name      string           `json:"name"`
+	Color     domain.GroupColor `json:"color,omitempty"`
+	Deleted   bool             `json:"deleted"`
+	CreatedAt int64            `json:"created_at"`
+	UpdatedAt int64            `json:"updated_at"`
 }
 
 func groupToJSON(g *domain.Group) *groupJSON2 {
 	return &groupJSON2{
 		Index:     g.Index(),
 		Name:      g.Name(),
+		Color:     g.Color(),
 		Deleted:   g.Deleted(),
 		CreatedAt: g.CreatedAt().Unix(),
 		UpdatedAt: g.UpdatedAt().Unix(),
