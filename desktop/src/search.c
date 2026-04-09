@@ -24,12 +24,41 @@ typedef struct {
 static void refresh_entries(SearchData *sd);
 static void rebuild_group_bar(SearchData *sd);
 
+static gboolean do_scroll_to_active_chip(gpointer data)
+{
+    SearchData *sd = data;
+    GtkAdjustment *adj = gtk_scrolled_window_get_hadjustment(GTK_SCROLLED_WINDOW(sd->group_scroll));
+    for (GtkWidget *child = gtk_widget_get_first_child(sd->group_bar);
+         child; child = gtk_widget_get_next_sibling(child)) {
+        if (gtk_widget_has_css_class(child, "group-chip-active")) {
+            graphene_rect_t bounds;
+            if (gtk_widget_compute_bounds(child, sd->group_bar, &bounds)) {
+                double mid = bounds.origin.x + bounds.size.width / 2.0;
+                double page = gtk_adjustment_get_page_size(adj);
+                double target = mid - page / 2.0;
+                double upper = gtk_adjustment_get_upper(adj);
+                if (target < 0) target = 0;
+                if (target > upper - page) target = upper - page;
+                gtk_adjustment_set_value(adj, target);
+            }
+            break;
+        }
+    }
+    return G_SOURCE_REMOVE;
+}
+
+static void scroll_to_active_chip(SearchData *sd)
+{
+    g_idle_add(do_scroll_to_active_chip, sd);
+}
+
 static void on_group_chip_clicked(GtkButton *btn, gpointer data)
 {
     SearchData *sd = data;
     sd->active_group = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(btn), "group-idx"));
     rebuild_group_bar(sd);
     refresh_entries(sd);
+    scroll_to_active_chip(sd);
 }
 
 static void rebuild_group_bar(SearchData *sd)
@@ -147,6 +176,7 @@ static void cycle_group_forward(SearchData *sd)
 
     rebuild_group_bar(sd);
     refresh_entries(sd);
+    scroll_to_active_chip(sd);
 }
 
 static void cycle_group_backward(SearchData *sd)
@@ -182,6 +212,7 @@ static void cycle_group_backward(SearchData *sd)
 
     rebuild_group_bar(sd);
     refresh_entries(sd);
+    scroll_to_active_chip(sd);
 }
 
 static const char *icon_for_type(const char *type)
@@ -711,6 +742,7 @@ static void on_view_map(GtkWidget *widget, gpointer data)
     gtk_revealer_set_reveal_child(GTK_REVEALER(sd->search_revealer), FALSE);
     rebuild_group_bar(sd);
     refresh_entries(sd);
+    scroll_to_active_chip(sd);
     gtk_widget_grab_focus(sd->list_box);
 }
 
@@ -734,9 +766,9 @@ GtkWidget *solock_search_view_new(SolockApp *app)
 
     GtkWidget *group_scroll = gtk_scrolled_window_new();
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(group_scroll),
-                                   GTK_POLICY_AUTOMATIC, GTK_POLICY_NEVER);
+                                   GTK_POLICY_ALWAYS, GTK_POLICY_NEVER);
     gtk_scrolled_window_set_propagate_natural_width(GTK_SCROLLED_WINDOW(group_scroll), FALSE);
-    gtk_widget_set_overflow(group_scroll, GTK_OVERFLOW_HIDDEN);
+    gtk_widget_add_css_class(group_scroll, "hidden-scrollbar");
 
     GtkWidget *group_bar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
     gtk_widget_set_margin_start(group_bar, 6);
@@ -748,8 +780,8 @@ GtkWidget *solock_search_view_new(SolockApp *app)
     gtk_box_append(GTK_BOX(box), group_scroll);
 
     GtkWidget *scroll = gtk_scrolled_window_new();
-    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
-    gtk_widget_add_css_class(scroll, "no-scrollbar");
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll), GTK_POLICY_NEVER, GTK_POLICY_ALWAYS);
+    gtk_widget_add_css_class(scroll, "hidden-scrollbar");
     gtk_scrolled_window_set_max_content_height(GTK_SCROLLED_WINDOW(scroll), 320);
     gtk_scrolled_window_set_propagate_natural_height(GTK_SCROLLED_WINDOW(scroll), TRUE);
     gtk_widget_set_vexpand(scroll, FALSE);
