@@ -337,8 +337,11 @@ static gboolean on_key_pressed(GtkEventControllerKey *ctrl, guint keyval,
     if (keyval == GDK_KEY_Return || keyval == GDK_KEY_KP_Enter) {
         GtkListBoxRow *row = gtk_list_box_get_selected_row(GTK_LIST_BOX(sd->list_box));
         if (row) {
-            int idx = gtk_list_box_row_get_index(row);
-            activate_entry_at_index(sd, idx);
+            GtkWidget *child = gtk_list_box_row_get_child(row);
+            if (child) {
+                int idx = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(child), "entry-index"));
+                activate_entry_at_index(sd, idx);
+            }
             return TRUE;
         }
         return FALSE;
