@@ -1,4 +1,6 @@
 #include "solock-desktop.h"
+#include <string.h>
+#include <arpa/inet.h>
 
 extern SolockClient *solock_app_get_client(SolockApp *app);
 extern SolockConfig *solock_app_get_config(SolockApp *app);
@@ -30,10 +32,102 @@ typedef struct {
     guint            bus_name_id;
     char            *bus_name;
     gboolean         locked;
+    gboolean         syncing;
     guint32          menu_revision;
 } TrayData;
 
 static TrayData *tray = NULL;
+
+#define ICON_SIZE 22
+#define PX_WHITE htonl(0xFFFFFFFF)
+#define PX_BLACK htonl(0xFF000000)
+
+static void draw_lock_body(guint32 *px, int w)
+{
+    for (int y = 10; y < 19; y++)
+        for (int x = 6; x < 16; x++)
+            px[y * w + x] = PX_WHITE;
+    px[14 * w + 10] = PX_BLACK;
+    px[14 * w + 11] = PX_BLACK;
+    px[15 * w + 10] = PX_BLACK;
+    px[15 * w + 11] = PX_BLACK;
+    px[16 * w + 10] = PX_BLACK;
+    px[16 * w + 11] = PX_BLACK;
+}
+
+static GVariant *make_icon_pixmap_locked(void)
+{
+    guint32 px[ICON_SIZE * ICON_SIZE];
+    memset(px, 0, sizeof(px));
+    for (int y = 4; y < 11; y++)
+        for (int x = 7; x < 15; x++) {
+            int dx = x - 11, dy = y - 7;
+            if ((dx * dx + dy * dy >= 6 && dx * dx + dy * dy <= 16) && y < 10)
+                px[y * ICON_SIZE + x] = PX_WHITE;
+        }
+    for (int y = 4; y < 10; y++) {
+        if (y < 10) { px[y * ICON_SIZE + 7] = PX_WHITE; px[y * ICON_SIZE + 14] = PX_WHITE; }
+    }
+    for (int x = 7; x <= 14; x++) px[4 * ICON_SIZE + x] = PX_WHITE;
+    draw_lock_body(px, ICON_SIZE);
+    GBytes *bytes = g_bytes_new(px, sizeof(px));
+    GVariantBuilder b;
+    g_variant_builder_init(&b, G_VARIANT_TYPE("a(iiay)"));
+    g_variant_builder_add(&b, "(ii@ay)", ICON_SIZE, ICON_SIZE,
+        g_variant_new_from_bytes(G_VARIANT_TYPE("ay"), bytes, TRUE));
+    g_bytes_unref(bytes);
+    return g_variant_builder_end(&b);
+}
+
+static GVariant *make_icon_pixmap_unlocked(void)
+{
+    guint32 px[ICON_SIZE * ICON_SIZE];
+    memset(px, 0, sizeof(px));
+    for (int y = 4; y < 10; y++) {
+        px[y * ICON_SIZE + 7] = PX_WHITE;
+        if (y <= 5) px[y * ICON_SIZE + 14] = PX_WHITE;
+    }
+    for (int x = 7; x <= 14; x++) px[4 * ICON_SIZE + x] = PX_WHITE;
+    draw_lock_body(px, ICON_SIZE);
+    GBytes *bytes = g_bytes_new(px, sizeof(px));
+    GVariantBuilder b;
+    g_variant_builder_init(&b, G_VARIANT_TYPE("a(iiay)"));
+    g_variant_builder_add(&b, "(ii@ay)", ICON_SIZE, ICON_SIZE,
+        g_variant_new_from_bytes(G_VARIANT_TYPE("ay"), bytes, TRUE));
+    g_bytes_unref(bytes);
+    return g_variant_builder_end(&b);
+}
+
+static GVariant *make_icon_pixmap_syncing(void)
+{
+    guint32 px[ICON_SIZE * ICON_SIZE];
+    memset(px, 0, sizeof(px));
+    static const int arc_top[][2] = {
+        {8,4},{9,4},{10,4},{11,4},{12,4},{13,4},
+        {14,5},{15,6},{15,7},{15,8},{14,9},{13,10}
+    };
+    static const int arc_bot[][2] = {
+        {13,18},{12,18},{11,18},{10,18},{9,18},{8,18},
+        {7,17},{6,16},{6,15},{6,14},{7,13},{8,12}
+    };
+    for (int i = 0; i < 12; i++) {
+        px[arc_top[i][1] * ICON_SIZE + arc_top[i][0]] = PX_WHITE;
+        px[arc_bot[i][1] * ICON_SIZE + arc_bot[i][0]] = PX_WHITE;
+    }
+    px[3 * ICON_SIZE + 13] = PX_WHITE;
+    px[3 * ICON_SIZE + 14] = PX_WHITE;
+    px[4 * ICON_SIZE + 14] = PX_WHITE;
+    px[19 * ICON_SIZE + 8] = PX_WHITE;
+    px[19 * ICON_SIZE + 7] = PX_WHITE;
+    px[18 * ICON_SIZE + 7] = PX_WHITE;
+    GBytes *bytes = g_bytes_new(px, sizeof(px));
+    GVariantBuilder b;
+    g_variant_builder_init(&b, G_VARIANT_TYPE("a(iiay)"));
+    g_variant_builder_add(&b, "(ii@ay)", ICON_SIZE, ICON_SIZE,
+        g_variant_new_from_bytes(G_VARIANT_TYPE("ay"), bytes, TRUE));
+    g_bytes_unref(bytes);
+    return g_variant_builder_end(&b);
+}
 
 static const char *sni_introspection_xml =
     "<node>"
@@ -59,6 +153,7 @@ static const char *sni_introspection_xml =
     "    <property name='Title' type='s' access='read'/>"
     "    <property name='Status' type='s' access='read'/>"
     "    <property name='IconName' type='s' access='read'/>"
+    "    <property name='IconPixmap' type='a(iiay)' access='read'/>"
     "    <property name='IconThemePath' type='s' access='read'/>"
     "    <property name='Menu' type='o' access='read'/>"
     "    <property name='ItemIsMenu' type='b' access='read'/>"
@@ -234,15 +329,24 @@ static GVariant *sni_get_property(GDBusConnection *conn, const char *sender,
     if (g_strcmp0(property, "Status") == 0)
         return g_variant_new_string("Active");
     if (g_strcmp0(property, "IconName") == 0)
-        return g_variant_new_string(tray->locked ? "security-low-symbolic" : "security-high-symbolic");
-    if (g_strcmp0(property, "IconThemePath") == 0)
         return g_variant_new_string("");
+    if (g_strcmp0(property, "IconPixmap") == 0) {
+        if (tray->syncing)
+            return make_icon_pixmap_syncing();
+        return tray->locked ? make_icon_pixmap_locked() : make_icon_pixmap_unlocked();
+    }
+    if (g_strcmp0(property, "IconThemePath") == 0) {
+        if (g_file_test("data/icons", G_FILE_TEST_IS_DIR))
+            return g_variant_new_string("data/icons");
+        return g_variant_new_string(SOLOCK_DATA_DIR "/icons");
+    }
     if (g_strcmp0(property, "Menu") == 0)
         return g_variant_new_object_path(DBUSMENU_PATH);
     if (g_strcmp0(property, "ItemIsMenu") == 0)
         return g_variant_new_boolean(TRUE);
     if (g_strcmp0(property, "ToolTip") == 0) {
-        const char *tooltip = tray->locked ? "SoLock - Locked" : "SoLock - Unlocked";
+        const char *tooltip = tray->syncing ? "SoLock - Syncing..." :
+                               tray->locked ? "SoLock - Locked" : "SoLock - Unlocked";
         GVariantBuilder pixmaps;
         g_variant_builder_init(&pixmaps, G_VARIANT_TYPE("a(iiay)"));
         return g_variant_new("(sa(iiay)ss)", "", &pixmaps, "SoLock", tooltip);
@@ -416,6 +520,10 @@ static GVariant *menu_get_property(GDBusConnection *conn, const char *sender,
     if (g_strcmp0(property, "IconThemePath") == 0) {
         GVariantBuilder b;
         g_variant_builder_init(&b, G_VARIANT_TYPE("as"));
+        if (g_file_test("data/icons", G_FILE_TEST_IS_DIR))
+            g_variant_builder_add(&b, "s", "data/icons");
+        else
+            g_variant_builder_add(&b, "s", SOLOCK_DATA_DIR "/icons");
         return g_variant_new("as", &b);
     }
     return NULL;
@@ -527,4 +635,18 @@ void solock_tray_update_status(SolockApp *app, gboolean locked)
     g_dbus_connection_emit_signal(tray->conn, NULL, DBUSMENU_PATH,
         DBUSMENU_IFACE, "LayoutUpdated",
         g_variant_new("(ui)", tray->menu_revision, 0), NULL);
+}
+
+void solock_tray_set_syncing(SolockApp *app, gboolean syncing)
+{
+    (void)app;
+    if (!tray || !tray->conn) return;
+
+    tray->syncing = syncing;
+
+    g_dbus_connection_emit_signal(tray->conn, NULL, SNI_DBUS_PATH,
+        SNI_DBUS_IFACE, "NewIcon", NULL, NULL);
+
+    g_dbus_connection_emit_signal(tray->conn, NULL, SNI_DBUS_PATH,
+        SNI_DBUS_IFACE, "NewToolTip", NULL, NULL);
 }

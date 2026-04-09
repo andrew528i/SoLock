@@ -49,3 +49,10 @@ install_data('data/solock-desktop.desktop',
 install_data('data/icons/hicolor/scalable/apps/solock-desktop.svg',
   install_dir: get_option('datadir') / 'icons' / 'hicolor' / 'scalable' / 'apps',
 )
+
+install_data(
+  'data/icons/hicolor/scalable/status/solock-locked-symbolic.svg',
+  'data/icons/hicolor/scalable/status/solock-unlocked-symbolic.svg',
+  'data/icons/hicolor/scalable/status/solock-syncing-symbolic.svg',
+  install_dir: get_option('datadir') / 'icons' / 'hicolor' / 'scalable' / 'status',
+)

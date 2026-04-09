@@ -53,10 +53,19 @@ static gboolean on_expiry_check(gpointer data)
                 gint64 remaining = json_object_get_int_member(obj, "remaining_seconds");
                 if (remaining <= 0) {
                     solock_client_lock(app->client);
+                    solock_tray_set_syncing(app, FALSE);
                     solock_tray_update_status(app, TRUE);
                 }
             }
             json_node_unref(status);
+        }
+
+        JsonNode *sync_st = solock_client_sync_status(app->client, NULL);
+        if (sync_st) {
+            JsonObject *sobj = json_node_get_object(sync_st);
+            gboolean in_progress = json_object_get_boolean_member_with_default(sobj, "in_progress", FALSE);
+            solock_tray_set_syncing(app, in_progress);
+            json_node_unref(sync_st);
         }
     }
     return G_SOURCE_CONTINUE;
@@ -95,7 +104,7 @@ static void solock_app_startup(GApplication *gapp)
     app->config = solock_config_new();
     solock_config_load(app->config);
 
-    app->expiry_timer = g_timeout_add_seconds(30, on_expiry_check, app);
+    app->expiry_timer = g_timeout_add_seconds(5, on_expiry_check, app);
 }
 
 static void solock_app_shutdown_handler(GApplication *gapp)

@@ -258,15 +258,45 @@ func TestAddGroupOnChainError(t *testing.T) {
 
 	uc := NewAddGroupUseCase(groups, vault, crypto)
 
-	vault.EXPECT().GetMeta(gomock.Any()).Return(&domain.VaultMeta{NextGroupIndex: 3}, nil)
-	vault.EXPECT().AddGroup(gomock.Any(), uint32(3), gomock.Any()).Return(fmt.Errorf("tx confirmation timeout: FakeSig"))
+	txErr := fmt.Errorf("tx confirmation timeout: FakeSig")
+	vault.EXPECT().GetMeta(gomock.Any()).Return(&domain.VaultMeta{NextGroupIndex: 3}, nil).Times(4)
+	vault.EXPECT().AddGroup(gomock.Any(), gomock.Any(), gomock.Any()).Return(txErr).Times(3)
 
 	_, err := uc.Execute(context.Background(), "Finance", "")
 	if err == nil {
-		t.Fatal("expected error when on-chain transaction fails")
+		t.Fatal("expected error when on-chain transaction fails after retries")
 	}
-	if !strings.Contains(err.Error(), "tx confirmation timeout") {
-		t.Errorf("expected timeout error, got: %v", err)
+	if !strings.Contains(err.Error(), "3 attempts") {
+		t.Errorf("expected '3 attempts' error, got: %v", err)
+	}
+}
+
+func TestAddGroupRetryOnCollision(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	groups := mock.NewMockGroupRepository(ctrl)
+	vault := mock.NewMockVaultRepository(ctrl)
+	crypto := testCrypto()
+
+	uc := NewAddGroupUseCase(groups, vault, crypto)
+
+	vault.EXPECT().GetMeta(gomock.Any()).Return(&domain.VaultMeta{NextGroupIndex: 5}, nil)
+	vault.EXPECT().AddGroup(gomock.Any(), uint32(5), gomock.Any()).Return(fmt.Errorf("account already in use"))
+	vault.EXPECT().GetMeta(gomock.Any()).Return(&domain.VaultMeta{NextGroupIndex: 6}, nil)
+	vault.EXPECT().AddGroup(gomock.Any(), uint32(6), gomock.Any()).Return(nil)
+	groups.EXPECT().Save(gomock.Any(), gomock.Any()).Return(nil)
+
+	result, err := uc.Execute(context.Background(), "Work", "blue")
+	if err != nil {
+		t.Fatalf("expected success after retry, got: %v", err)
+	}
+	if !result.OnChain {
+		t.Error("should be on-chain")
+	}
+	if result.Group.Index() != 6 {
+		t.Errorf("expected index 6 after retry, got %d", result.Group.Index())
+	}
+	if result.Group.Color() != "blue" {
+		t.Errorf("expected color 'blue', got %q", result.Group.Color())
 	}
 }
 

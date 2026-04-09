@@ -23,6 +23,7 @@ typedef struct {
     GtkWidget *spinner;
     char *deployer_text;
     char *program_text;
+    gint64 last_refresh_time;
 } DashboardData;
 
 static void on_copy_deployer(GtkButton *button, gpointer data)
@@ -139,6 +140,11 @@ static void dashboard_refresh(DashboardData *dd)
     SolockClient *client = solock_app_get_client(dd->app);
     if (solock_client_is_locked(client)) return;
 
+    gint64 now = g_get_monotonic_time();
+    if (dd->last_refresh_time > 0 && (now - dd->last_refresh_time) < 30 * G_USEC_PER_SEC)
+        return;
+    dd->last_refresh_time = now;
+
     gtk_widget_set_sensitive(dd->refresh_btn, FALSE);
     gtk_widget_set_visible(dd->spinner, TRUE);
     gtk_spinner_start(GTK_SPINNER(dd->spinner));
@@ -175,6 +181,7 @@ static void on_refresh_clicked(GtkButton *button, gpointer data)
     gtk_widget_set_visible(dd->spinner, FALSE);
     gtk_widget_set_sensitive(dd->refresh_btn, TRUE);
 
+    dd->last_refresh_time = 0;
     dashboard_refresh(dd);
 }
 
@@ -359,7 +366,7 @@ GtkWidget *solock_dashboard_view_new(SolockApp *app)
     adw_clamp_set_child(ADW_CLAMP(clamp), box);
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scroll), clamp);
 
-    dashboard_refresh(dd);
+    g_signal_connect_swapped(scroll, "map", G_CALLBACK(dashboard_refresh), dd);
 
     return scroll;
 }

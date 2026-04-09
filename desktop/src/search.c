@@ -665,7 +665,11 @@ static void refresh_entries(SearchData *sd)
     if (first)
         gtk_list_box_select_row(GTK_LIST_BOX(sd->list_box), first);
 
-    gtk_widget_queue_draw(sd->list_box);
+    GtkWidget *scroll_parent = gtk_widget_get_parent(sd->list_box);
+    if (scroll_parent && GTK_IS_SCROLLED_WINDOW(scroll_parent)) {
+        GtkAdjustment *adj = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(scroll_parent));
+        gtk_adjustment_set_value(adj, 0);
+    }
 }
 
 static void on_view_map(GtkWidget *widget, gpointer data)
@@ -713,7 +717,7 @@ GtkWidget *solock_search_view_new(SolockApp *app)
     gtk_box_append(GTK_BOX(box), group_scroll);
 
     GtkWidget *scroll = gtk_scrolled_window_new();
-    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll), GTK_POLICY_NEVER, GTK_POLICY_EXTERNAL);
     gtk_scrolled_window_set_max_content_height(GTK_SCROLLED_WINDOW(scroll), 320);
     gtk_scrolled_window_set_propagate_natural_height(GTK_SCROLLED_WINDOW(scroll), TRUE);
     gtk_widget_set_vexpand(scroll, FALSE);

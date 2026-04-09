@@ -27,7 +27,7 @@ func (h *Handler) Handle(req *Request) *Response {
 			if h.app.IsExpired() {
 				h.app.Lock()
 			}
-			if h.app.IsLocked() && req.Method != "status" && req.Method != "shutdown" {
+			if h.app.IsLocked() && req.Method != "status" && req.Method != "sync_status" && req.Method != "shutdown" {
 				return errorResponse(req.ID, ErrCodeLocked, "vault is locked")
 			}
 		}
@@ -56,6 +56,8 @@ func (h *Handler) Handle(req *Request) *Response {
 		return h.handleGetDashboard(req)
 	case "sync":
 		return h.handleSync(req)
+	case "sync_status":
+		return h.handleSyncStatus(req)
 	case "deploy_program":
 		return h.handleDeployProgram(req)
 	case "initialize_vault":
@@ -111,6 +113,8 @@ func (h *Handler) handleUnlock(req *Request) *Response {
 	if err := h.app.OnUnlockWithTimeout(ctx, params.Password, params.RPCURL, params.TimeoutMinutes); err != nil {
 		return errorResponse(req.ID, ErrCodeInternal, err.Error())
 	}
+
+	h.app.StartBackgroundSync()
 
 	return successResponse(req.ID, map[string]any{
 		"ok":         true,
@@ -326,6 +330,10 @@ func (h *Handler) handleSync(req *Request) *Response {
 		return errorResponse(req.ID, ErrCodeInternal, err.Error())
 	}
 	return successResponse(req.ID, map[string]bool{"ok": true})
+}
+
+func (h *Handler) handleSyncStatus(req *Request) *Response {
+	return successResponse(req.ID, h.app.GetSyncStatus())
 }
 
 func (h *Handler) handleDeployProgram(req *Request) *Response {

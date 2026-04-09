@@ -438,6 +438,11 @@ JsonNode *solock_client_status(SolockClient *c, GError **error)
     return solock_client_call(c, "status", NULL, error);
 }
 
+JsonNode *solock_client_sync_status(SolockClient *c, GError **error)
+{
+    return solock_client_call(c, "sync_status", NULL, error);
+}
+
 JsonNode *solock_client_list_groups(SolockClient *c, GError **error)
 {
     return solock_client_call(c, "list_groups", NULL, error);

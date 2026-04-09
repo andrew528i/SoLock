@@ -39,6 +39,7 @@ gboolean      solock_client_init_vault(SolockClient *client, GError **error);
 char         *solock_client_generate_password(SolockClient *client, int length, gboolean uppercase, gboolean digits, gboolean special, GError **error);
 JsonNode     *solock_client_generate_totp(SolockClient *client, const char *secret, int digits, int period, GError **error);
 JsonNode     *solock_client_status(SolockClient *client, GError **error);
+JsonNode     *solock_client_sync_status(SolockClient *client, GError **error);
 void          solock_client_shutdown(SolockClient *client);
 
 /* config.h */
@@ -96,6 +97,7 @@ GtkWidget    *solock_settings_view_new(SolockApp *app);
 /* tray.h */
 void          solock_tray_setup(SolockApp *app);
 void          solock_tray_update_status(SolockApp *app, gboolean locked);
+void          solock_tray_set_syncing(SolockApp *app, gboolean syncing);
 
 /* wtype.h */
 gboolean      solock_wtype_available(void);

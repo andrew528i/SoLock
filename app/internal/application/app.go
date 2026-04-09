@@ -15,6 +15,12 @@ import (
 type VaultRepoFactory func(keys *domain.DerivedKeys, rpcURL string) domain.VaultRepository
 type StorageFactory func(dbPath string, crypto domain.CryptoService) (domain.EntryRepository, domain.GroupRepository, domain.ConfigRepository, domain.SyncStateRepository, error)
 
+type SyncStatus struct {
+	InProgress bool   `json:"in_progress"`
+	Phase      string `json:"phase,omitempty"`
+	Error      string `json:"error,omitempty"`
+}
+
 type App struct {
 	dataDir          string
 	keyDeriver       domain.KeyDeriver
@@ -30,6 +36,9 @@ type App struct {
 	syncState domain.SyncStateRepository
 	vault     domain.VaultRepository
 	expiresAt time.Time
+
+	syncMu     sync.RWMutex
+	syncStatus SyncStatus
 
 	Unlock             *usecase.UnlockUseCase
 	AddEntry           *usecase.AddEntryUseCase
@@ -179,6 +188,50 @@ func (a *App) Config() domain.ConfigRepository       { return a.config }
 func (a *App) SyncState() domain.SyncStateRepository { return a.syncState }
 func (a *App) Vault() domain.VaultRepository         { return a.vault }
 func (a *App) Crypto() domain.CryptoService          { return a.crypto }
+
+func (a *App) GetSyncStatus() SyncStatus {
+	a.syncMu.RLock()
+	defer a.syncMu.RUnlock()
+	return a.syncStatus
+}
+
+func (a *App) StartBackgroundSync() {
+	a.syncMu.Lock()
+	if a.syncStatus.InProgress {
+		a.syncMu.Unlock()
+		return
+	}
+	a.mu.RLock()
+	syncUC := a.Sync
+	a.mu.RUnlock()
+	if syncUC == nil {
+		a.syncMu.Unlock()
+		return
+	}
+	a.syncStatus = SyncStatus{InProgress: true, Phase: "Starting..."}
+	a.syncMu.Unlock()
+
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+		defer cancel()
+
+		err := syncUC.Execute(ctx, func(p usecase.SyncProgress) {
+			a.syncMu.Lock()
+			a.syncStatus.Phase = p.Phase
+			a.syncMu.Unlock()
+		})
+
+		a.syncMu.Lock()
+		a.syncStatus.InProgress = false
+		a.syncStatus.Phase = ""
+		if err != nil {
+			a.syncStatus.Error = err.Error()
+		} else {
+			a.syncStatus.Error = ""
+		}
+		a.syncMu.Unlock()
+	}()
+}
 
 func (a *App) Shutdown() {
 	a.Lock()

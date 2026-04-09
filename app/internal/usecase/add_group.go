@@ -45,28 +45,38 @@ func (uc *AddGroupUseCase) Execute(ctx context.Context, name string, color domai
 	}
 
 	slot := meta.AllocateGroupSlot()
-	group, err := domain.NewGroup(slot, name)
-	if err != nil {
-		return nil, err
-	}
-	if color != "" {
-		group.SetColor(color)
+
+	var lastErr error
+	for attempt := 0; attempt < 3; attempt++ {
+		group, err := domain.NewGroup(slot, name)
+		if err != nil {
+			return nil, err
+		}
+		if color != "" {
+			group.SetColor(color)
+		}
+
+		encrypted, err := uc.encryptGroup(group)
+		if err != nil {
+			return nil, fmt.Errorf("encrypt: %w", err)
+		}
+
+		lastErr = uc.vault.AddGroup(ctx, slot, encrypted)
+		if lastErr == nil {
+			if err := uc.groups.Save(ctx, group); err != nil {
+				return nil, fmt.Errorf("save local: %w", err)
+			}
+			return &AddGroupResult{OnChain: true, Group: group}, nil
+		}
+
+		fresh, metaErr := uc.vault.GetMeta(ctx)
+		if metaErr != nil {
+			return nil, fmt.Errorf("add on-chain: %w (retry: %w)", lastErr, metaErr)
+		}
+		slot = fresh.AllocateGroupSlot()
 	}
 
-	encrypted, err := uc.encryptGroup(group)
-	if err != nil {
-		return nil, fmt.Errorf("encrypt: %w", err)
-	}
-
-	if err := uc.vault.AddGroup(ctx, slot, encrypted); err != nil {
-		return nil, fmt.Errorf("add on-chain: %w", err)
-	}
-
-	if err := uc.groups.Save(ctx, group); err != nil {
-		return nil, fmt.Errorf("save local: %w", err)
-	}
-
-	return &AddGroupResult{OnChain: true, Group: group}, nil
+	return nil, fmt.Errorf("add on-chain after 3 attempts: %w", lastErr)
 }
 
 func (uc *AddGroupUseCase) encryptGroup(group *domain.Group) ([]byte, error) {
