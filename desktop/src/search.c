@@ -95,8 +95,6 @@ static void rebuild_group_bar(SearchData *sd)
             gtk_box_append(GTK_BOX(btn_box), chip_dot);
         }
         GtkWidget *chip_label = gtk_label_new(name);
-        gtk_label_set_ellipsize(GTK_LABEL(chip_label), PANGO_ELLIPSIZE_END);
-        gtk_label_set_max_width_chars(GTK_LABEL(chip_label), 16);
         gtk_box_append(GTK_BOX(btn_box), chip_label);
         gtk_button_set_child(GTK_BUTTON(btn), btn_box);
 
@@ -360,8 +358,24 @@ static gboolean on_key_pressed(GtkEventControllerKey *ctrl, guint keyval,
         int cur = gtk_list_box_row_get_index(selected);
         int next = (keyval == GDK_KEY_Down) ? cur + 1 : cur - 1;
         GtkListBoxRow *next_row = gtk_list_box_get_row_at_index(GTK_LIST_BOX(sd->list_box), next);
-        if (next_row)
+        if (next_row) {
             gtk_list_box_select_row(GTK_LIST_BOX(sd->list_box), next_row);
+            GtkWidget *scroll_parent = gtk_widget_get_ancestor(sd->list_box, GTK_TYPE_SCROLLED_WINDOW);
+            if (scroll_parent) {
+                GtkAdjustment *adj = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(scroll_parent));
+                graphene_rect_t bounds;
+                if (gtk_widget_compute_bounds(GTK_WIDGET(next_row), sd->list_box, &bounds)) {
+                    double page = gtk_adjustment_get_page_size(adj);
+                    double val = gtk_adjustment_get_value(adj);
+                    double row_top = bounds.origin.y;
+                    double row_bot = row_top + bounds.size.height;
+                    if (row_bot > val + page)
+                        gtk_adjustment_set_value(adj, row_bot - page);
+                    else if (row_top < val)
+                        gtk_adjustment_set_value(adj, row_top);
+                }
+            }
+        }
         gtk_widget_grab_focus(sd->list_box);
         return TRUE;
     }
@@ -704,7 +718,7 @@ GtkWidget *solock_search_view_new(SolockApp *app)
 
     GtkWidget *group_scroll = gtk_scrolled_window_new();
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(group_scroll),
-                                   GTK_POLICY_AUTOMATIC, GTK_POLICY_NEVER);
+                                   GTK_POLICY_EXTERNAL, GTK_POLICY_NEVER);
     gtk_widget_set_size_request(group_scroll, -1, -1);
 
     GtkWidget *group_bar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
