@@ -142,6 +142,20 @@ func (mr *MockEntryRepositoryMockRecorder) Save(ctx, entry any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockEntryRepository)(nil).Save), ctx, entry)
 }
 
+// TouchAccessed mocks base method.
+func (m *MockEntryRepository) TouchAccessed(ctx context.Context, id string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TouchAccessed", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// TouchAccessed indicates an expected call of TouchAccessed.
+func (mr *MockEntryRepositoryMockRecorder) TouchAccessed(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TouchAccessed", reflect.TypeOf((*MockEntryRepository)(nil).TouchAccessed), ctx, id)
+}
+
 // MockGroupRepository is a mock of GroupRepository interface.
 type MockGroupRepository struct {
 	ctrl     *gomock.Controller

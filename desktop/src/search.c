@@ -424,6 +424,44 @@ static const char *group_color_for_index(SearchData *sd, int group_idx)
     return NULL;
 }
 
+static int sort_compare_recently_used(gconstpointer a, gconstpointer b)
+{
+    JsonObject *oa = json_node_get_object(*(JsonNode **)a);
+    JsonObject *ob = json_node_get_object(*(JsonNode **)b);
+    gint64 aa = json_object_get_int_member_with_default(oa, "accessed_at", 0);
+    gint64 ab = json_object_get_int_member_with_default(ob, "accessed_at", 0);
+    if (aa != ab)
+        return (ab > aa) ? 1 : -1;
+    gint64 sa = json_object_get_int_member_with_default(oa, "slot_index", 0);
+    gint64 sb = json_object_get_int_member_with_default(ob, "slot_index", 0);
+    if (sa > sb) return 1;
+    if (sa < sb) return -1;
+    return 0;
+}
+
+static void sort_entries_by_recent(JsonArray *arr)
+{
+    guint len = json_array_get_length(arr);
+    if (len <= 1) return;
+
+    JsonNode **nodes = g_new(JsonNode *, len);
+    for (guint i = 0; i < len; i++)
+        nodes[i] = json_array_get_element(arr, i);
+
+    qsort(nodes, len, sizeof(JsonNode *), sort_compare_recently_used);
+
+    for (guint i = 0; i < len; i++)
+        json_node_ref(nodes[i]);
+
+    while (json_array_get_length(arr) > 0)
+        json_array_remove_element(arr, 0);
+
+    for (guint i = 0; i < len; i++)
+        json_array_add_element(arr, nodes[i]);
+
+    g_free(nodes);
+}
+
 static void refresh_entries(SearchData *sd)
 {
     GtkWidget *child;
@@ -480,6 +518,7 @@ static void refresh_entries(SearchData *sd)
     }
 
     JsonArray *arr = json_node_get_array(sd->entries);
+    sort_entries_by_recent(arr);
     guint len = json_array_get_length(arr);
 
     guint visible_count = 0;

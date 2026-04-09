@@ -14,8 +14,9 @@ type Entry struct {
 	name       string
 	fields     map[string]string
 	groupIndex *uint32
-	createdAt  time.Time
-	updatedAt  time.Time
+	createdAt   time.Time
+	updatedAt   time.Time
+	accessedAt  time.Time
 }
 
 func NewEntry(id string, entryType EntryType, name string, fields map[string]string) (*Entry, error) {
@@ -56,8 +57,9 @@ func (e *Entry) Type() EntryType       { return e.entryType }
 func (e *Entry) Name() string          { return e.name }
 func (e *Entry) GroupIndex() *uint32   { return e.groupIndex }
 func (e *Entry) CreatedAt() time.Time  { return e.createdAt }
-func (e *Entry) UpdatedAt() time.Time  { return e.updatedAt }
-func (e *Entry) Schema() *EntrySchema  { return SchemaFor(e.entryType) }
+func (e *Entry) UpdatedAt() time.Time   { return e.updatedAt }
+func (e *Entry) AccessedAt() time.Time  { return e.accessedAt }
+func (e *Entry) Schema() *EntrySchema   { return SchemaFor(e.entryType) }
 
 func (e *Entry) Field(key string) string {
 	return e.fields[key]
@@ -109,6 +111,10 @@ func (e *Entry) SetFields(fields map[string]string) {
 
 func (e *Entry) Touch() {
 	e.updatedAt = time.Now().UTC()
+}
+
+func (e *Entry) SetAccessedAt(t time.Time) {
+	e.accessedAt = t
 }
 
 func (e *Entry) TOTPSecret() string {

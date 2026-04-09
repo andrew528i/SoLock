@@ -63,6 +63,18 @@ func (s *SQLite) migrate() error {
 		);
 		CREATE INDEX IF NOT EXISTS idx_entries_slot ON entries(slot_index);
 	`)
+	if err != nil {
+		return err
+	}
+
+	var cnt int
+	err = s.db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('entries') WHERE name = 'accessed_at'`).Scan(&cnt)
+	if err != nil {
+		return err
+	}
+	if cnt == 0 {
+		_, err = s.db.Exec(`ALTER TABLE entries ADD COLUMN accessed_at INTEGER NOT NULL DEFAULT 0`)
+	}
 	return err
 }
 

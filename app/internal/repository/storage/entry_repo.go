@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/solock/solock/internal/domain"
@@ -35,7 +36,7 @@ func (r *EntryRepo) Save(ctx context.Context, entry *domain.Entry) error {
 }
 
 func (r *EntryRepo) Get(ctx context.Context, id string) (*domain.Entry, error) {
-	query, args, err := sq.Select("encrypted_data").
+	query, args, err := sq.Select("encrypted_data", "accessed_at").
 		From("entries").
 		Where(sq.Eq{"id": id}).
 		ToSql()
@@ -43,14 +44,22 @@ func (r *EntryRepo) Get(ctx context.Context, id string) (*domain.Entry, error) {
 		return nil, err
 	}
 	var encrypted []byte
-	err = r.s.db.QueryRowContext(ctx, query, args...).Scan(&encrypted)
+	var accessedAt int64
+	err = r.s.db.QueryRowContext(ctx, query, args...).Scan(&encrypted, &accessedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	return r.decryptEntry(encrypted)
+	entry, err := r.decryptEntry(encrypted)
+	if err != nil {
+		return nil, err
+	}
+	if accessedAt > 0 {
+		entry.SetAccessedAt(time.Unix(accessedAt, 0).UTC())
+	}
+	return entry, nil
 }
 
 func (r *EntryRepo) Delete(ctx context.Context, id string) error {
@@ -65,7 +74,7 @@ func (r *EntryRepo) Delete(ctx context.Context, id string) error {
 }
 
 func (r *EntryRepo) List(ctx context.Context) ([]*domain.Entry, error) {
-	query, args, err := sq.Select("encrypted_data").
+	query, args, err := sq.Select("encrypted_data", "accessed_at").
 		From("entries").
 		OrderBy("slot_index ASC").
 		ToSql()
@@ -81,12 +90,16 @@ func (r *EntryRepo) List(ctx context.Context) ([]*domain.Entry, error) {
 	var entries []*domain.Entry
 	for rows.Next() {
 		var encrypted []byte
-		if err := rows.Scan(&encrypted); err != nil {
+		var accessedAt int64
+		if err := rows.Scan(&encrypted, &accessedAt); err != nil {
 			return nil, err
 		}
 		entry, err := r.decryptEntry(encrypted)
 		if err != nil {
 			continue
+		}
+		if accessedAt > 0 {
+			entry.SetAccessedAt(time.Unix(accessedAt, 0).UTC())
 		}
 		entries = append(entries, entry)
 	}
@@ -108,6 +121,18 @@ func (r *EntryRepo) Count(ctx context.Context) (int, error) {
 func (r *EntryRepo) MarkSynced(ctx context.Context, id string) error {
 	query, args, err := sq.Update("entries").
 		Set("synced", 1).
+		Where(sq.Eq{"id": id}).
+		ToSql()
+	if err != nil {
+		return err
+	}
+	_, err = r.s.db.ExecContext(ctx, query, args...)
+	return err
+}
+
+func (r *EntryRepo) TouchAccessed(ctx context.Context, id string) error {
+	query, args, err := sq.Update("entries").
+		Set("accessed_at", time.Now().UTC().Unix()).
 		Where(sq.Eq{"id": id}).
 		ToSql()
 	if err != nil {

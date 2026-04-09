@@ -599,9 +599,14 @@ type entryJSON struct {
 	GroupIndex *uint32           `json:"group_index,omitempty"`
 	CreatedAt  int64             `json:"created_at"`
 	UpdatedAt  int64             `json:"updated_at"`
+	AccessedAt int64             `json:"accessed_at"`
 }
 
 func entryToJSON(e *domain.Entry) *entryJSON {
+	var accessedAt int64
+	if !e.AccessedAt().IsZero() {
+		accessedAt = e.AccessedAt().Unix()
+	}
 	return &entryJSON{
 		ID:         e.ID(),
 		Type:       string(e.Type()),
@@ -612,6 +617,7 @@ func entryToJSON(e *domain.Entry) *entryJSON {
 		GroupIndex: e.GroupIndex(),
 		CreatedAt:  e.CreatedAt().Unix(),
 		UpdatedAt:  e.UpdatedAt().Unix(),
+		AccessedAt: accessedAt,
 	}
 }
 

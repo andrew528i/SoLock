@@ -23,5 +23,6 @@ func (uc *GetEntryUseCase) Execute(ctx context.Context, id string) (*domain.Entr
 	if entry == nil {
 		return nil, fmt.Errorf("entry not found: %s", id)
 	}
+	_ = uc.entries.TouchAccessed(ctx, id)
 	return entry, nil
 }

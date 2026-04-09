@@ -9,6 +9,7 @@ type EntryRepository interface {
 	List(ctx context.Context) ([]*Entry, error)
 	Count(ctx context.Context) (int, error)
 	MarkSynced(ctx context.Context, id string) error
+	TouchAccessed(ctx context.Context, id string) error
 	ClearAll(ctx context.Context) error
 }
 
