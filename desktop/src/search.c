@@ -5,8 +5,8 @@ extern SolockClient *solock_app_get_client(SolockApp *app);
 extern SolockConfig *solock_app_get_config(SolockApp *app);
 extern GtkWidget    *solock_app_get_popup(SolockApp *app);
 
-static const char LABEL_CHARS[] = "asdfghjkl;";
-static const int  LABEL_CHARS_LEN = 10;
+static const char LABEL_CHARS[] = "asdfghjkl";
+static const int  LABEL_CHARS_LEN = 9;
 #define MAX_VISIBLE_ENTRIES 6
 
 typedef struct {
@@ -312,11 +312,6 @@ static void close_search(SearchData *sd)
     refresh_entries(sd);
 }
 
-static void on_list_mouse_motion(GtkEventControllerMotion *ctrl,
-                                 double x, double y, gpointer data)
-{
-    (void)ctrl; (void)x; (void)y; (void)data;
-}
 
 static gboolean on_key_pressed(GtkEventControllerKey *ctrl, guint keyval,
                                 guint keycode, GdkModifierType state, gpointer data)
@@ -836,10 +831,6 @@ GtkWidget *solock_search_view_new(SolockApp *app)
     g_signal_connect(key_ctrl, "key-pressed", G_CALLBACK(on_key_pressed), sd);
     g_signal_connect(key_ctrl, "key-released", G_CALLBACK(on_key_released), sd);
     gtk_widget_add_controller(box, key_ctrl);
-
-    GtkEventController *mouse_ctrl = gtk_event_controller_motion_new();
-    g_signal_connect(mouse_ctrl, "motion", G_CALLBACK(on_list_mouse_motion), sd);
-    gtk_widget_add_controller(list_box, mouse_ctrl);
 
     GtkEventController *entry_scroll_ctrl = GTK_EVENT_CONTROLLER(
         gtk_event_controller_scroll_new(GTK_EVENT_CONTROLLER_SCROLL_VERTICAL));

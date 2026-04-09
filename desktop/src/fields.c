@@ -427,27 +427,10 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
     gtk_label_set_xalign(GTK_LABEL(type_label), 1);
     gtk_box_append(GTK_BOX(meta_box), type_label);
 
-    if (json_object_has_member(obj, "group_index") &&
-        !json_object_get_null_member(obj, "group_index")) {
-        gint64 gi = json_object_get_int_member(obj, "group_index");
-
-        const char *gname = NULL;
-        SolockClient *client = solock_app_get_client(app);
-        JsonNode *groups = solock_client_list_groups(client, NULL);
-        if (groups && JSON_NODE_TYPE(groups) == JSON_NODE_ARRAY) {
-            JsonArray *garr = json_node_get_array(groups);
-            for (guint i = 0; i < json_array_get_length(garr); i++) {
-                JsonObject *gobj = json_array_get_object_element(garr, i);
-                if (json_object_get_int_member(gobj, "index") == gi) {
-                    if (json_object_get_boolean_member(gobj, "deleted"))
-                        gname = "[deleted]";
-                    else
-                        gname = json_object_get_string_member(gobj, "name");
-                    break;
-                }
-            }
-        }
-        if (!gname) gname = "[deleted]";
+    if (json_object_has_member(obj, "group_name") &&
+        !json_object_get_null_member(obj, "group_name")) {
+        const char *gname = json_object_get_string_member(obj, "group_name");
+        if (!gname || !*gname) gname = "[deleted]";
 
         GtkWidget *group_label = gtk_label_new(gname);
         gtk_widget_add_css_class(group_label, "detail-meta");
@@ -455,8 +438,6 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
         if (g_strcmp0(gname, "[deleted]") == 0)
             gtk_widget_add_css_class(group_label, "error");
         gtk_box_append(GTK_BOX(meta_box), group_label);
-
-        if (groups) json_node_unref(groups);
     }
 
     gtk_box_append(GTK_BOX(header), meta_box);

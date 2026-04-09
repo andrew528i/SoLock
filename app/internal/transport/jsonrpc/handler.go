@@ -150,7 +150,11 @@ func (h *Handler) handleListEntries(req *Request) *Response {
 	if err != nil {
 		return errorResponse(req.ID, ErrCodeInternal, err.Error())
 	}
-	return successResponse(req.ID, entriesToJSON(entries))
+	var groups []*domain.Group
+	if h.app.Groups() != nil {
+		groups, _ = h.app.Groups().List(ctx)
+	}
+	return successResponse(req.ID, entriesToJSON(entries, groups))
 }
 
 func (h *Handler) handleGetEntry(req *Request) *Response {
@@ -168,7 +172,11 @@ func (h *Handler) handleGetEntry(req *Request) *Response {
 	if err != nil {
 		return errorResponse(req.ID, ErrCodeInternal, err.Error())
 	}
-	return successResponse(req.ID, entryToJSON(entry))
+	var groups []*domain.Group
+	if h.app.Groups() != nil {
+		groups, _ = h.app.Groups().List(ctx)
+	}
+	return successResponse(req.ID, entryToJSON(entry, groups))
 }
 
 func (h *Handler) handleSearchEntries(req *Request) *Response {
@@ -186,7 +194,11 @@ func (h *Handler) handleSearchEntries(req *Request) *Response {
 	if err != nil {
 		return errorResponse(req.ID, ErrCodeInternal, err.Error())
 	}
-	return successResponse(req.ID, entriesToJSON(result.Entries))
+	var groups []*domain.Group
+	if h.app.Groups() != nil {
+		groups, _ = h.app.Groups().List(ctx)
+	}
+	return successResponse(req.ID, entriesToJSON(result.Entries, groups))
 }
 
 func (h *Handler) handleAddEntry(req *Request) *Response {
@@ -605,17 +617,18 @@ type entryJSON struct {
 	HasTOTP    bool              `json:"has_totp"`
 	SlotIndex  uint32            `json:"slot_index"`
 	GroupIndex *uint32           `json:"group_index,omitempty"`
+	GroupName  *string           `json:"group_name,omitempty"`
 	CreatedAt  int64             `json:"created_at"`
 	UpdatedAt  int64             `json:"updated_at"`
 	AccessedAt int64             `json:"accessed_at"`
 }
 
-func entryToJSON(e *domain.Entry) *entryJSON {
+func entryToJSON(e *domain.Entry, groups []*domain.Group) *entryJSON {
 	var accessedAt int64
 	if !e.AccessedAt().IsZero() {
 		accessedAt = e.AccessedAt().Unix()
 	}
-	return &entryJSON{
+	ej := &entryJSON{
 		ID:         e.ID(),
 		Type:       string(e.Type()),
 		Name:       e.Name(),
@@ -627,12 +640,25 @@ func entryToJSON(e *domain.Entry) *entryJSON {
 		UpdatedAt:  e.UpdatedAt().Unix(),
 		AccessedAt: accessedAt,
 	}
+	if gi := e.GroupIndex(); gi != nil && groups != nil {
+		for _, g := range groups {
+			if g.Index() == *gi {
+				name := g.Name()
+				if g.Deleted() {
+					name = "[deleted]"
+				}
+				ej.GroupName = &name
+				break
+			}
+		}
+	}
+	return ej
 }
 
-func entriesToJSON(entries []*domain.Entry) []*entryJSON {
+func entriesToJSON(entries []*domain.Entry, groups []*domain.Group) []*entryJSON {
 	result := make([]*entryJSON, 0, len(entries))
 	for _, e := range entries {
-		result = append(result, entryToJSON(e))
+		result = append(result, entryToJSON(e, groups))
 	}
 	return result
 }
