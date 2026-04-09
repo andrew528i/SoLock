@@ -100,8 +100,7 @@ GtkWidget *solock_popup_new(SolockApp *app)
     gtk_layer_set_keyboard_mode(GTK_WINDOW(win), GTK_LAYER_SHELL_KEYBOARD_MODE_ON_DEMAND);
 
     GtkWidget *stack = gtk_stack_new();
-    gtk_stack_set_transition_type(GTK_STACK(stack), GTK_STACK_TRANSITION_TYPE_CROSSFADE);
-    gtk_stack_set_transition_duration(GTK_STACK(stack), 200);
+    gtk_stack_set_transition_type(GTK_STACK(stack), GTK_STACK_TRANSITION_TYPE_NONE);
     gtk_stack_set_vhomogeneous(GTK_STACK(stack), FALSE);
     gtk_stack_set_hhomogeneous(GTK_STACK(stack), FALSE);
     gtk_window_set_child(GTK_WINDOW(win), stack);

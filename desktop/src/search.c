@@ -7,6 +7,7 @@ extern GtkWidget    *solock_app_get_popup(SolockApp *app);
 
 static const char LABEL_CHARS[] = "asdfghjkl";
 static const int  LABEL_CHARS_LEN = 9;
+#define MAX_VISIBLE_ENTRIES 6
 
 typedef struct {
     SolockApp  *app;
@@ -19,9 +20,14 @@ typedef struct {
     JsonNode   *groups;
     int         active_group; /* -1 = all */
     gboolean    label_mode;
+    int        *filtered_indices;
+    int         filtered_count;
+    int         visible_offset;
+    int         selected_filtered;
 } SearchData;
 
 static void refresh_entries(SearchData *sd);
+static void rebuild_visible_list(SearchData *sd);
 static void rebuild_group_bar(SearchData *sd);
 
 static gboolean do_scroll_to_active_chip(gpointer data)
@@ -377,36 +383,15 @@ static gboolean on_key_pressed(GtkEventControllerKey *ctrl, guint keyval,
     }
 
     if (keyval == GDK_KEY_Up || keyval == GDK_KEY_Down) {
-        GtkListBoxRow *selected = gtk_list_box_get_selected_row(GTK_LIST_BOX(sd->list_box));
-        if (!selected) {
-            GtkListBoxRow *first = gtk_list_box_get_row_at_index(GTK_LIST_BOX(sd->list_box), 0);
-            if (first)
-                gtk_list_box_select_row(GTK_LIST_BOX(sd->list_box), first);
-            gtk_widget_grab_focus(sd->list_box);
-            return TRUE;
-        }
-
-        int cur = gtk_list_box_row_get_index(selected);
-        int next = (keyval == GDK_KEY_Down) ? cur + 1 : cur - 1;
-        GtkListBoxRow *next_row = gtk_list_box_get_row_at_index(GTK_LIST_BOX(sd->list_box), next);
-        if (next_row) {
-            gtk_list_box_select_row(GTK_LIST_BOX(sd->list_box), next_row);
-            GtkWidget *scroll_parent = gtk_widget_get_ancestor(sd->list_box, GTK_TYPE_SCROLLED_WINDOW);
-            if (scroll_parent) {
-                GtkAdjustment *adj = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(scroll_parent));
-                graphene_rect_t bounds;
-                if (gtk_widget_compute_bounds(GTK_WIDGET(next_row), sd->list_box, &bounds)) {
-                    double page = gtk_adjustment_get_page_size(adj);
-                    double val = gtk_adjustment_get_value(adj);
-                    double row_top = bounds.origin.y;
-                    double row_bot = row_top + bounds.size.height;
-                    if (row_bot > val + page)
-                        gtk_adjustment_set_value(adj, row_bot - page);
-                    else if (row_top < val)
-                        gtk_adjustment_set_value(adj, row_top);
-                }
-            }
-        }
+        if (sd->filtered_count == 0) return TRUE;
+        int next_sel = sd->selected_filtered + (keyval == GDK_KEY_Down ? 1 : -1);
+        if (next_sel < 0 || next_sel >= sd->filtered_count) return TRUE;
+        sd->selected_filtered = next_sel;
+        if (next_sel < sd->visible_offset)
+            sd->visible_offset = next_sel;
+        else if (next_sel >= sd->visible_offset + MAX_VISIBLE_ENTRIES)
+            sd->visible_offset = next_sel - MAX_VISIBLE_ENTRIES + 1;
+        rebuild_visible_list(sd);
         gtk_widget_grab_focus(sd->list_box);
         return TRUE;
     }
@@ -512,9 +497,11 @@ static void sort_entries_by_recent(JsonArray *arr)
 
 static void refresh_entries(SearchData *sd)
 {
-    GtkWidget *child;
-    while ((child = gtk_widget_get_first_child(sd->list_box)) != NULL)
-        gtk_list_box_remove(GTK_LIST_BOX(sd->list_box), child);
+    g_free(sd->filtered_indices);
+    sd->filtered_indices = NULL;
+    sd->filtered_count = 0;
+    sd->visible_offset = 0;
+    sd->selected_filtered = 0;
 
     if (sd->entries) {
         json_node_unref(sd->entries);
@@ -538,13 +525,45 @@ static void refresh_entries(SearchData *sd)
     }
 
     if (!sd->entries || JSON_NODE_TYPE(sd->entries) != JSON_NODE_ARRAY) {
-        if (gtk_revealer_get_reveal_child(GTK_REVEALER(sd->search_revealer))) {
+        rebuild_visible_list(sd);
+        return;
+    }
+
+    JsonArray *arr = json_node_get_array(sd->entries);
+    sort_entries_by_recent(arr);
+    guint len = json_array_get_length(arr);
+
+    sd->filtered_indices = g_new(int, len);
+    sd->filtered_count = 0;
+
+    for (guint i = 0; i < len; i++) {
+        JsonObject *obj = json_array_get_object_element(arr, i);
+        if (sd->active_group >= 0) {
+            if (!json_object_has_member(obj, "group_index") ||
+                json_object_get_null_member(obj, "group_index") ||
+                (int)json_object_get_int_member(obj, "group_index") != sd->active_group)
+                continue;
+        }
+        sd->filtered_indices[sd->filtered_count++] = (int)i;
+    }
+
+    rebuild_visible_list(sd);
+}
+
+static void rebuild_visible_list(SearchData *sd)
+{
+    GtkWidget *child;
+    while ((child = gtk_widget_get_first_child(sd->list_box)) != NULL)
+        gtk_list_box_remove(GTK_LIST_BOX(sd->list_box), child);
+
+    if (sd->filtered_count == 0) {
+        if (sd->entries && gtk_revealer_get_reveal_child(GTK_REVEALER(sd->search_revealer))) {
             GtkWidget *no_results = gtk_label_new("No results");
             gtk_widget_add_css_class(no_results, "dim-label");
             gtk_widget_set_margin_top(no_results, 8);
             gtk_widget_set_margin_bottom(no_results, 8);
             gtk_list_box_append(GTK_LIST_BOX(sd->list_box), no_results);
-        } else {
+        } else if (!sd->entries || sd->filtered_count == 0) {
             GtkWidget *empty_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
             gtk_widget_set_halign(empty_box, GTK_ALIGN_CENTER);
             gtk_widget_set_valign(empty_box, GTK_ALIGN_CENTER);
@@ -566,8 +585,6 @@ static void refresh_entries(SearchData *sd)
     }
 
     JsonArray *arr = json_node_get_array(sd->entries);
-    sort_entries_by_recent(arr);
-    guint len = json_array_get_length(arr);
 
     gboolean has_any_color = FALSE;
     if (sd->active_group < 0 && sd->groups && JSON_NODE_TYPE(sd->groups) == JSON_NODE_ARRAY) {
@@ -581,17 +598,13 @@ static void refresh_entries(SearchData *sd)
         }
     }
 
-    guint visible_count = 0;
-    for (guint i = 0; i < len; i++) {
+    int end = sd->visible_offset + MAX_VISIBLE_ENTRIES;
+    if (end > sd->filtered_count) end = sd->filtered_count;
+
+    for (int vi = sd->visible_offset; vi < end; vi++) {
+        int i = sd->filtered_indices[vi];
         JsonObject *obj = json_array_get_object_element(arr, i);
 
-        if (sd->active_group >= 0) {
-            if (!json_object_has_member(obj, "group_index") ||
-                json_object_get_null_member(obj, "group_index") ||
-                (int)json_object_get_int_member(obj, "group_index") != sd->active_group) {
-                continue;
-            }
-        }
         const char *name = json_object_get_string_member(obj, "name");
         const char *type = json_object_get_string_member(obj, "type");
         gboolean has_totp = json_object_get_boolean_member_with_default(obj, "has_totp", FALSE);
@@ -615,7 +628,8 @@ static void refresh_entries(SearchData *sd)
         gtk_widget_set_margin_bottom(row_box, 4);
         gtk_widget_set_size_request(row_box, -1, 54);
 
-        char lbl_char = label_char_for_index(visible_count);
+        int display_idx = vi - sd->visible_offset;
+        char lbl_char = label_char_for_index(display_idx);
         GtkWidget *hint_revealer = gtk_revealer_new();
         gtk_revealer_set_transition_type(GTK_REVEALER(hint_revealer), GTK_REVEALER_TRANSITION_TYPE_SLIDE_RIGHT);
         gtk_revealer_set_transition_duration(GTK_REVEALER(hint_revealer), 100);
@@ -663,7 +677,6 @@ static void refresh_entries(SearchData *sd)
         GtkWidget *text_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
         gtk_widget_set_hexpand(text_box, TRUE);
         gtk_widget_set_valign(text_box, GTK_ALIGN_CENTER);
-        gboolean has_subtitle = subtitle && *subtitle;
 
         GtkWidget *name_label = gtk_label_new(name);
         gtk_widget_add_css_class(name_label, "entry-name");
@@ -671,7 +684,7 @@ static void refresh_entries(SearchData *sd)
         gtk_label_set_ellipsize(GTK_LABEL(name_label), PANGO_ELLIPSIZE_END);
         gtk_box_append(GTK_BOX(text_box), name_label);
 
-        if (has_subtitle) {
+        if (subtitle && *subtitle) {
             GtkWidget *sub_label = gtk_label_new(subtitle);
             gtk_widget_add_css_class(sub_label, "entry-subtitle");
             gtk_label_set_xalign(GTK_LABEL(sub_label), 0);
@@ -689,48 +702,14 @@ static void refresh_entries(SearchData *sd)
             gtk_box_append(GTK_BOX(row_box), totp_indicator);
         }
 
-        g_object_set_data(G_OBJECT(row_box), "entry-index", GINT_TO_POINTER((int)i));
+        g_object_set_data(G_OBJECT(row_box), "entry-index", GINT_TO_POINTER(i));
         gtk_list_box_append(GTK_LIST_BOX(sd->list_box), row_box);
-        visible_count++;
     }
 
-    if (visible_count == 0) {
-        if (gtk_revealer_get_reveal_child(GTK_REVEALER(sd->search_revealer))) {
-            GtkWidget *no_results = gtk_label_new("No results");
-            gtk_widget_add_css_class(no_results, "dim-label");
-            gtk_widget_set_margin_top(no_results, 8);
-            gtk_widget_set_margin_bottom(no_results, 8);
-            gtk_list_box_append(GTK_LIST_BOX(sd->list_box), no_results);
-        } else {
-            GtkWidget *empty_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
-            gtk_widget_set_halign(empty_box, GTK_ALIGN_CENTER);
-            gtk_widget_set_valign(empty_box, GTK_ALIGN_CENTER);
-            gtk_widget_set_margin_top(empty_box, 24);
-            gtk_widget_set_margin_bottom(empty_box, 24);
-
-            GtkWidget *empty_title = gtk_label_new("No entries yet");
-            gtk_widget_add_css_class(empty_title, "dim-label");
-            gtk_box_append(GTK_BOX(empty_box), empty_title);
-
-            GtkWidget *empty_sub = gtk_label_new("Add passwords via Manage Vault");
-            gtk_widget_add_css_class(empty_sub, "dim-label");
-            gtk_widget_add_css_class(empty_sub, "caption");
-            gtk_box_append(GTK_BOX(empty_box), empty_sub);
-
-            gtk_list_box_append(GTK_LIST_BOX(sd->list_box), empty_box);
-        }
-        return;
-    }
-
-    GtkListBoxRow *first = gtk_list_box_get_row_at_index(GTK_LIST_BOX(sd->list_box), 0);
-    if (first)
-        gtk_list_box_select_row(GTK_LIST_BOX(sd->list_box), first);
-
-    GtkWidget *scroll_parent = gtk_widget_get_parent(sd->list_box);
-    if (scroll_parent && GTK_IS_SCROLLED_WINDOW(scroll_parent)) {
-        GtkAdjustment *adj = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(scroll_parent));
-        gtk_adjustment_set_value(adj, 0);
-    }
+    int sel_row = sd->selected_filtered - sd->visible_offset;
+    GtkListBoxRow *row = gtk_list_box_get_row_at_index(GTK_LIST_BOX(sd->list_box), sel_row);
+    if (row)
+        gtk_list_box_select_row(GTK_LIST_BOX(sd->list_box), row);
 }
 
 static void on_view_map(GtkWidget *widget, gpointer data)
@@ -749,9 +728,6 @@ static void on_view_map(GtkWidget *widget, gpointer data)
 GtkWidget *solock_search_view_new(SolockApp *app)
 {
     GtkWidget *box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-    gtk_widget_set_overflow(box, GTK_OVERFLOW_HIDDEN);
-    gtk_widget_add_css_class(box, "popup-content");
-
     GtkWidget *search_revealer = gtk_revealer_new();
     gtk_revealer_set_transition_type(GTK_REVEALER(search_revealer), GTK_REVEALER_TRANSITION_TYPE_SLIDE_DOWN);
     gtk_revealer_set_transition_duration(GTK_REVEALER(search_revealer), 150);
@@ -779,18 +755,11 @@ GtkWidget *solock_search_view_new(SolockApp *app)
     gtk_widget_set_visible(group_scroll, FALSE);
     gtk_box_append(GTK_BOX(box), group_scroll);
 
-    GtkWidget *scroll = gtk_scrolled_window_new();
-    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll), GTK_POLICY_NEVER, GTK_POLICY_EXTERNAL);
-    gtk_scrolled_window_set_max_content_height(GTK_SCROLLED_WINDOW(scroll), 320);
-    gtk_scrolled_window_set_propagate_natural_height(GTK_SCROLLED_WINDOW(scroll), TRUE);
-    gtk_widget_set_vexpand(scroll, FALSE);
-    gtk_widget_set_size_request(scroll, 320, 0);
-
     GtkWidget *list_box = gtk_list_box_new();
     gtk_list_box_set_selection_mode(GTK_LIST_BOX(list_box), GTK_SELECTION_SINGLE);
     gtk_widget_add_css_class(list_box, "entry-list");
-    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scroll), list_box);
-    gtk_box_append(GTK_BOX(box), scroll);
+    gtk_widget_set_size_request(list_box, 320, -1);
+    gtk_box_append(GTK_BOX(box), list_box);
 
     SearchData *sd = g_new0(SearchData, 1);
     sd->app = app;
