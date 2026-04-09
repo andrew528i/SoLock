@@ -2,15 +2,14 @@
     background-color: rgba(28, 33, 38, 0.98);
     border-radius: 12px;
     border: 1px solid rgba(127, 187, 179, 0.2);
-    overflow: hidden;
 }
 
 .search-input {
     background: rgba(45, 55, 62, 0.7);
     border-radius: 8px;
     border: 1px solid rgba(79, 88, 94, 0.25);
-    padding: 5px 8px;
-    font-size: 13px;
+    padding: 7px 10px;
+    font-size: 15px;
     color: #d3c6aa;
     caret-color: #7fbbb3;
 }
@@ -31,15 +30,19 @@
     min-height: 0;
 }
 
+.no-scrollbar {
+    border-radius: 0 0 12px 12px;
+}
+
 .no-scrollbar scrollbar {
-    opacity: 0;
+    all: unset;
     min-width: 0;
     min-height: 0;
 }
 
 .entry-list {
     background: transparent;
-    padding: 2px 0 6px 0;
+    padding: 2px 0 4px 0;
 }
 
 .entry-list row {
@@ -63,12 +66,12 @@
 
 .entry-name {
     font-weight: 500;
-    font-size: 13px;
+    font-size: 15px;
     color: #d3c6aa;
 }
 
 .entry-subtitle {
-    font-size: 11px;
+    font-size: 12px;
     color: #859289;
 }
 
@@ -84,7 +87,7 @@
 
 .label-hint {
     font-weight: 700;
-    font-size: 10px;
+    font-size: 11px;
     color: #7fbbb3;
     background: rgba(127, 187, 179, 0.2);
     border-radius: 4px;
@@ -97,31 +100,31 @@
 }
 
 .label-hint-visible {
-    min-width: 16px;
-    padding: 0 4px;
+    min-width: 18px;
+    padding: 0 5px;
     margin-right: 6px;
     opacity: 1;
 }
 
 .detail-name {
     font-weight: 600;
-    font-size: 15px;
+    font-size: 17px;
     color: #d3c6aa;
 }
 
 .detail-meta {
-    font-size: 10px;
+    font-size: 11px;
     color: #7a8478;
     font-weight: 500;
 }
 
 .detail-header {
-    padding: 6px 10px;
+    padding: 8px 12px;
 }
 
 .detail-field-row {
     border-radius: 8px;
-    padding: 8px 10px;
+    padding: 10px 12px;
     transition: background-color 120ms ease;
 }
 
@@ -134,20 +137,20 @@
 }
 
 .detail-field-label {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     color: #7a8478;
     letter-spacing: 0.3px;
 }
 
 .detail-field-value {
-    font-size: 14px;
+    font-size: 15px;
     color: #d3c6aa;
 }
 
 .copied-feedback {
     color: #a7c080;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 500;
 }
 
@@ -157,7 +160,7 @@
 }
 
 .unlock-title {
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 400;
     color: #9da9a0;
 }
@@ -241,10 +244,10 @@ preferencesgroup > box > label {
 /* sidebar spacer no longer needed - single list now */
 
 .group-chip {
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 500;
-    padding: 1px 7px;
-    min-height: 20px;
+    padding: 2px 8px;
+    min-height: 22px;
     border-radius: 6px;
     color: #859289;
     background: transparent;
@@ -265,12 +268,12 @@ preferencesgroup > box > label {
 }
 
 .group-color-dot {
-    font-size: 8px;
+    font-size: 9px;
     min-width: 0;
 }
 
 .group-chip-dot {
-    font-size: 7px;
+    font-size: 8px;
     min-width: 0;
 }
 

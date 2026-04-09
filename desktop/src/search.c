@@ -582,7 +582,7 @@ static void refresh_entries(SearchData *sd)
         gtk_widget_set_margin_end(row_box, 4);
         gtk_widget_set_margin_top(row_box, 4);
         gtk_widget_set_margin_bottom(row_box, 4);
-        gtk_widget_set_size_request(row_box, -1, 48);
+        gtk_widget_set_size_request(row_box, -1, 54);
 
         char lbl_char = label_char_for_index(visible_count);
         GtkWidget *hint_revealer = gtk_revealer_new();
@@ -622,10 +622,10 @@ static void refresh_entries(SearchData *sd)
         }
 
         GtkWidget *icon = gtk_image_new_from_icon_name(icon_for_type(type));
-        gtk_image_set_pixel_size(GTK_IMAGE(icon), 18);
+        gtk_image_set_pixel_size(GTK_IMAGE(icon), 20);
         gtk_widget_add_css_class(icon, "entry-icon");
         gtk_widget_set_valign(icon, GTK_ALIGN_CENTER);
-        gtk_widget_set_margin_start(icon, 11);
+        gtk_widget_set_margin_start(icon, 12);
         gtk_widget_set_margin_end(icon, 10);
         gtk_box_append(GTK_BOX(row_box), icon);
 
@@ -735,8 +735,8 @@ GtkWidget *solock_search_view_new(SolockApp *app)
     GtkWidget *group_scroll = gtk_scrolled_window_new();
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(group_scroll),
                                    GTK_POLICY_AUTOMATIC, GTK_POLICY_NEVER);
-    gtk_widget_add_css_class(group_scroll, "no-scrollbar");
-    gtk_widget_set_size_request(group_scroll, -1, -1);
+    gtk_scrolled_window_set_propagate_natural_width(GTK_SCROLLED_WINDOW(group_scroll), FALSE);
+    gtk_widget_set_overflow(group_scroll, GTK_OVERFLOW_HIDDEN);
 
     GtkWidget *group_bar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
     gtk_widget_set_margin_start(group_bar, 6);
@@ -753,13 +753,11 @@ GtkWidget *solock_search_view_new(SolockApp *app)
     gtk_scrolled_window_set_max_content_height(GTK_SCROLLED_WINDOW(scroll), 320);
     gtk_scrolled_window_set_propagate_natural_height(GTK_SCROLLED_WINDOW(scroll), TRUE);
     gtk_widget_set_vexpand(scroll, FALSE);
-    gtk_widget_set_size_request(scroll, 280, 0);
+    gtk_widget_set_size_request(scroll, 320, 0);
 
     GtkWidget *list_box = gtk_list_box_new();
     gtk_list_box_set_selection_mode(GTK_LIST_BOX(list_box), GTK_SELECTION_SINGLE);
     gtk_widget_add_css_class(list_box, "entry-list");
-    gtk_widget_set_margin_top(list_box, 6);
-    gtk_widget_set_margin_bottom(list_box, 4);
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scroll), list_box);
     gtk_box_append(GTK_BOX(box), scroll);
 

@@ -193,6 +193,14 @@ void solock_popup_switch_to_detail(GtkWidget *popup, JsonNode *entry)
     (void)popup;
     if (!popup_data) return;
 
+    JsonObject *obj = json_node_get_object(entry);
+    if (json_object_has_member(obj, "id")) {
+        const char *id = json_object_get_string_member(obj, "id");
+        SolockClient *client = solock_app_get_client(popup_data->app);
+        JsonNode *fresh = solock_client_get_entry(client, id, NULL);
+        if (fresh) json_node_unref(fresh);
+    }
+
     remove_detail_view(popup_data);
 
     popup_data->detail_view = solock_fields_view_new(popup_data->app, entry);

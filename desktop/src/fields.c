@@ -380,7 +380,7 @@ GtkWidget *solock_fields_view_new(SolockApp *app, JsonNode *entry)
     gtk_widget_set_margin_end(box, 6);
     gtk_widget_set_margin_top(box, 6);
     gtk_widget_set_margin_bottom(box, 6);
-    gtk_widget_set_size_request(box, 280, -1);
+    gtk_widget_set_size_request(box, 320, -1);
 
     DetailData *dd = g_new0(DetailData, 1);
     dd->app = app;
