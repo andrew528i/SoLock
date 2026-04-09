@@ -766,9 +766,7 @@ GtkWidget *solock_search_view_new(SolockApp *app)
 
     GtkWidget *group_scroll = gtk_scrolled_window_new();
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(group_scroll),
-                                   GTK_POLICY_ALWAYS, GTK_POLICY_NEVER);
-    gtk_scrolled_window_set_propagate_natural_width(GTK_SCROLLED_WINDOW(group_scroll), FALSE);
-    gtk_widget_add_css_class(group_scroll, "hidden-scrollbar");
+                                   GTK_POLICY_EXTERNAL, GTK_POLICY_NEVER);
 
     GtkWidget *group_bar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
     gtk_widget_set_margin_start(group_bar, 6);
@@ -780,8 +778,7 @@ GtkWidget *solock_search_view_new(SolockApp *app)
     gtk_box_append(GTK_BOX(box), group_scroll);
 
     GtkWidget *scroll = gtk_scrolled_window_new();
-    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll), GTK_POLICY_NEVER, GTK_POLICY_ALWAYS);
-    gtk_widget_add_css_class(scroll, "hidden-scrollbar");
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll), GTK_POLICY_NEVER, GTK_POLICY_EXTERNAL);
     gtk_scrolled_window_set_max_content_height(GTK_SCROLLED_WINDOW(scroll), 320);
     gtk_scrolled_window_set_propagate_natural_height(GTK_SCROLLED_WINDOW(scroll), TRUE);
     gtk_widget_set_vexpand(scroll, FALSE);
