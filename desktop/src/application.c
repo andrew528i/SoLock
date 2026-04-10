@@ -127,6 +127,7 @@ static void solock_app_shutdown_handler(GApplication *gapp)
         app->expiry_timer = 0;
     }
 
+    solock_tray_shutdown();
     solock_client_shutdown(app->client);
     solock_client_stop_serve(app->client);
     solock_client_free(app->client);

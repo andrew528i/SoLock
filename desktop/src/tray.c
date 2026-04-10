@@ -1,5 +1,6 @@
 #include "solock-desktop.h"
 #include <string.h>
+#include <unistd.h>
 
 extern SolockClient *solock_app_get_client(SolockApp *app);
 extern SolockConfig *solock_app_get_config(SolockApp *app);
@@ -510,7 +511,11 @@ static void on_name_acquired(GDBusConnection *conn, const char *name, gpointer d
 
 static void on_name_lost(GDBusConnection *conn, const char *name, gpointer data)
 {
-    (void)conn; (void)name; (void)data;
+    (void)conn; (void)data;
+    /* Either we could not acquire the name (another owner already held it)
+     * or it was stolen from us. Either way the tray icon will disappear,
+     * so make the failure visible in the journal instead of dying silent. */
+    g_warning("solock tray: lost D-Bus name '%s' - tray icon will not be registered", name);
 }
 
 void solock_tray_setup(SolockApp *app)
@@ -520,11 +525,43 @@ void solock_tray_setup(SolockApp *app)
     tray->locked = TRUE;
     tray->menu_revision = 1;
 
+    /* Per StatusNotifierItem spec the bus name must be unique per process,
+     * following the form org.kde.StatusNotifierItem-PID-ID. A hard-coded
+     * name collides with leftover ownership from a previous solock instance
+     * (e.g. after nixos-rebuild switch) and the new process silently fails
+     * to register with the watcher, so the tray icon disappears. */
+    char *owned_name = g_strdup_printf("org.kde.StatusNotifierItem-%d-1", (int)getpid());
     tray->bus_name_id = g_bus_own_name(G_BUS_TYPE_SESSION,
-        "org.kde.StatusNotifierItem-solock",
+        owned_name,
         G_BUS_NAME_OWNER_FLAGS_NONE,
         on_bus_acquired, on_name_acquired, on_name_lost,
-        NULL, NULL);
+        owned_name, g_free);
+}
+
+void solock_tray_shutdown(void)
+{
+    if (!tray) return;
+
+    /* Unregister exported objects first so the bus can send out
+     * NameOwnerChanged cleanly once the name is released. tray->conn is
+     * borrowed from g_bus_own_name and must not be unref'd here. */
+    if (tray->conn) {
+        if (tray->sni_reg_id > 0) {
+            g_dbus_connection_unregister_object(tray->conn, tray->sni_reg_id);
+            tray->sni_reg_id = 0;
+        }
+        if (tray->menu_reg_id > 0) {
+            g_dbus_connection_unregister_object(tray->conn, tray->menu_reg_id);
+            tray->menu_reg_id = 0;
+        }
+        tray->conn = NULL;
+    }
+    if (tray->bus_name_id > 0) {
+        g_bus_unown_name(tray->bus_name_id);
+        tray->bus_name_id = 0;
+    }
+    g_clear_pointer(&tray->bus_name, g_free);
+    g_clear_pointer(&tray, g_free);
 }
 
 void solock_tray_update_status(SolockApp *app, gboolean locked)

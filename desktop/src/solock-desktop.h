@@ -96,6 +96,7 @@ GtkWidget    *solock_settings_view_new(SolockApp *app);
 
 /* tray.h */
 void          solock_tray_setup(SolockApp *app);
+void          solock_tray_shutdown(void);
 void          solock_tray_update_status(SolockApp *app, gboolean locked);
 void          solock_tray_set_syncing(SolockApp *app, gboolean syncing);
 
