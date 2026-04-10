@@ -11,12 +11,19 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/gagliardetto/solana-go"
+	computebudget "github.com/gagliardetto/solana-go/programs/compute-budget"
 	"github.com/gagliardetto/solana-go/rpc"
 	"github.com/solock/solock/internal/domain"
+)
+
+const (
+	computeUnitLimit    uint32 = 200_000
+	fallbackPriorityFee uint64 = 10_000 // micro-lamports per CU
 )
 
 type SolanaVaultRepo struct {
@@ -542,8 +549,12 @@ func (r *SolanaVaultRepo) send(ctx context.Context, ix solana.Instruction) error
 		return fmt.Errorf("get blockhash: %w", err)
 	}
 
+	priorityFee := r.estimatePriorityFee(ctx)
+	cuLimitIx := computebudget.NewSetComputeUnitLimitInstruction(computeUnitLimit).Build()
+	cuPriceIx := computebudget.NewSetComputeUnitPriceInstruction(priorityFee).Build()
+
 	tx, err := solana.NewTransaction(
-		[]solana.Instruction{ix},
+		[]solana.Instruction{cuLimitIx, cuPriceIx, ix},
 		bh.Value.Blockhash,
 		solana.TransactionPayer(r.owner.PublicKey()),
 	)
@@ -592,6 +603,36 @@ func (r *SolanaVaultRepo) send(ctx context.Context, ix solana.Instruction) error
 		}
 	}
 	return fmt.Errorf("tx confirmation timeout: %s", sig)
+}
+
+func (r *SolanaVaultRepo) estimatePriorityFee(ctx context.Context) uint64 {
+	vaultPDA, _, err := r.vaultPDA()
+	if err != nil {
+		return fallbackPriorityFee
+	}
+
+	accounts := solana.PublicKeySlice{vaultPDA}
+	fees, err := r.rpc.GetRecentPrioritizationFees(ctx, accounts)
+	if err != nil || len(fees) == 0 {
+		return fallbackPriorityFee
+	}
+
+	samples := make([]uint64, 0, len(fees))
+	for _, f := range fees {
+		if f.PrioritizationFee > 0 {
+			samples = append(samples, f.PrioritizationFee)
+		}
+	}
+	if len(samples) == 0 {
+		return fallbackPriorityFee
+	}
+
+	sort.Slice(samples, func(i, j int) bool { return samples[i] < samples[j] })
+	p75 := samples[(len(samples)*75)/100]
+	if p75 < fallbackPriorityFee {
+		return fallbackPriorityFee
+	}
+	return p75
 }
 
 func (r *SolanaVaultRepo) parseVaultMeta(data []byte) (*domain.VaultMeta, error) {

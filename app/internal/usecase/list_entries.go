@@ -22,10 +22,11 @@ func (uc *ListEntriesUseCase) Execute(ctx context.Context) ([]*domain.Entry, err
 
 type SearchEntriesUseCase struct {
 	entries domain.EntryRepository
+	groups  domain.GroupRepository
 }
 
-func NewSearchEntriesUseCase(entries domain.EntryRepository) *SearchEntriesUseCase {
-	return &SearchEntriesUseCase{entries: entries}
+func NewSearchEntriesUseCase(entries domain.EntryRepository, groups domain.GroupRepository) *SearchEntriesUseCase {
+	return &SearchEntriesUseCase{entries: entries, groups: groups}
 }
 
 type SearchResult struct {
@@ -40,20 +41,58 @@ func (uc *SearchEntriesUseCase) Execute(ctx context.Context, query string) (*Sea
 	if query == "" {
 		return &SearchResult{Entries: all}, nil
 	}
-	return &SearchResult{Entries: FuzzyFilter(all, query)}, nil
+	var groups []*domain.Group
+	if uc.groups != nil {
+		groups, _ = uc.groups.List(ctx)
+	}
+	return &SearchResult{Entries: FuzzyFilterWithGroups(all, groups, query)}, nil
 }
 
 func FuzzyFilter(entries []*domain.Entry, query string) []*domain.Entry {
+	return FuzzyFilterWithGroups(entries, nil, query)
+}
+
+func FuzzyFilterWithGroups(entries []*domain.Entry, groups []*domain.Group, query string) []*domain.Entry {
 	query = strings.ToLower(query)
-	var result []*domain.Entry
+	if query == "" {
+		return entries
+	}
+
+	groupNames := make(map[uint32]string, len(groups))
+	for _, g := range groups {
+		groupNames[g.Index()] = strings.ToLower(g.Name())
+	}
+
+	result := make([]*domain.Entry, 0, len(entries))
 	for _, e := range entries {
-		if fuzzyMatch(strings.ToLower(e.Name()), query) ||
-			fuzzyMatch(strings.ToLower(e.Field("username")), query) ||
-			fuzzyMatch(strings.ToLower(e.Field("site")), query) {
+		if entryMatches(e, groupNames, query) {
 			result = append(result, e)
 		}
 	}
 	return result
+}
+
+func entryMatches(e *domain.Entry, groupNames map[uint32]string, query string) bool {
+	if fuzzyMatch(strings.ToLower(e.Name()), query) {
+		return true
+	}
+	if fuzzyMatch(strings.ToLower(string(e.Type())), query) {
+		return true
+	}
+	for _, v := range e.Fields() {
+		if v == "" {
+			continue
+		}
+		if fuzzyMatch(strings.ToLower(v), query) {
+			return true
+		}
+	}
+	if gi := e.GroupIndex(); gi != nil {
+		if name, ok := groupNames[*gi]; ok && fuzzyMatch(name, query) {
+			return true
+		}
+	}
+	return false
 }
 
 func fuzzyMatch(s, pattern string) bool {

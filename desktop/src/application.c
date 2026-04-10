@@ -38,8 +38,10 @@ static void on_activate(GApplication *gapp)
         return;
     }
 
+    g_application_hold(gapp);
     solock_tray_setup(app);
     app->popup = solock_popup_new(app);
+    solock_popup_show(app->popup);
 }
 
 static gboolean on_expiry_check(gpointer data)
@@ -100,6 +102,15 @@ static void solock_app_startup(GApplication *gapp)
         GTK_STYLE_PROVIDER(css),
         GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
     g_object_unref(css);
+
+    GtkCssProvider *theme = gtk_css_provider_new();
+    if (solock_theme_try_load(theme)) {
+        gtk_style_context_add_provider_for_display(
+            gdk_display_get_default(),
+            GTK_STYLE_PROVIDER(theme),
+            GTK_STYLE_PROVIDER_PRIORITY_USER);
+    }
+    g_object_unref(theme);
 
     app->config = solock_config_new();
     solock_config_load(app->config);

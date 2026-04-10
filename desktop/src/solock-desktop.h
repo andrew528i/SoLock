@@ -105,3 +105,9 @@ gboolean      solock_wtype_type(const char *text, GError **error);
 
 /* clipboard.h */
 gboolean      solock_clipboard_copy(const char *text, int clear_after_seconds, GError **error);
+
+/* secure.h */
+void          solock_secure_free(char *secret);
+
+/* theme.h */
+gboolean      solock_theme_try_load(GtkCssProvider *provider);

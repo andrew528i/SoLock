@@ -34,7 +34,7 @@ static gboolean do_unlock(gpointer data)
         g_error_free(error);
     }
 
-    g_free(ud->password);
+    solock_secure_free(ud->password);
     ud->password = NULL;
 
     return G_SOURCE_REMOVE;

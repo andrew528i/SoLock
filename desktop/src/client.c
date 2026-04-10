@@ -22,7 +22,7 @@ SolockClient *solock_client_new(void)
 void solock_client_free(SolockClient *c)
 {
     g_free(c->sock_path);
-    g_free(c->token);
+    solock_secure_free(c->token);
     g_free(c);
 }
 
@@ -76,7 +76,7 @@ gboolean solock_client_start_serve(SolockClient *c, GError **error)
                         "solock serve failed to start");
         }
         g_free(line1);
-        g_free(line2);
+        solock_secure_free(line2);
         return FALSE;
     }
     close(stderr_fd);
@@ -84,7 +84,7 @@ gboolean solock_client_start_serve(SolockClient *c, GError **error)
     c->sock_path = g_strstrip(g_strdup(line1));
     c->token = g_strstrip(g_strdup(line2));
     g_free(line1);
-    g_free(line2);
+    solock_secure_free(line2);
 
     return TRUE;
 }
@@ -164,18 +164,18 @@ JsonNode *solock_client_call(SolockClient *c, const char *method, JsonNode *para
     g_object_unref(builder);
 
     gchar *line = g_strconcat(request_str, "\n", NULL);
-    g_free(request_str);
+    solock_secure_free(request_str);
 
     GSocketConnection *conn = connect_to_socket(c, error);
     if (!conn) {
-        g_free(line);
+        solock_secure_free(line);
         return NULL;
     }
 
     GOutputStream *out = g_io_stream_get_output_stream(G_IO_STREAM(conn));
     g_output_stream_write_all(out, line, strlen(line), NULL, NULL, error);
     g_output_stream_flush(out, NULL, NULL);
-    g_free(line);
+    solock_secure_free(line);
 
     GInputStream *in = g_io_stream_get_input_stream(G_IO_STREAM(conn));
     GDataInputStream *data_in = g_data_input_stream_new(in);
@@ -191,11 +191,11 @@ JsonNode *solock_client_call(SolockClient *c, const char *method, JsonNode *para
 
     JsonParser *parser = json_parser_new();
     if (!json_parser_load_from_data(parser, response_line, -1, error)) {
-        g_free(response_line);
+        solock_secure_free(response_line);
         g_object_unref(parser);
         return NULL;
     }
-    g_free(response_line);
+    solock_secure_free(response_line);
 
     JsonNode *resp = json_node_copy(json_parser_get_root(parser));
     g_object_unref(parser);

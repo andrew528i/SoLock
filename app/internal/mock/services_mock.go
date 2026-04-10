@@ -108,3 +108,15 @@ func (mr *MockCryptoServiceMockRecorder) Encrypt(data any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Encrypt", reflect.TypeOf((*MockCryptoService)(nil).Encrypt), data)
 }
+
+// Wipe mocks base method.
+func (m *MockCryptoService) Wipe() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Wipe")
+}
+
+// Wipe indicates an expected call of Wipe.
+func (mr *MockCryptoServiceMockRecorder) Wipe() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Wipe", reflect.TypeOf((*MockCryptoService)(nil).Wipe))
+}

@@ -21,16 +21,26 @@ func NewHandler(app *application.App, token string, shutdown chan struct{}) *Han
 	return &Handler{app: app, token: token, shutdown: shutdown}
 }
 
+func isUserActivityMethod(method string) bool {
+	switch method {
+	case "unlock", "lock", "status", "sync_status", "shutdown":
+		return false
+	}
+	return true
+}
+
 func (h *Handler) Handle(req *Request) *Response {
 	if req.Method != "unlock" {
-		if h.app.IsLocked() {
-			if h.app.IsExpired() {
-				h.app.Lock()
-			}
-			if h.app.IsLocked() && req.Method != "status" && req.Method != "sync_status" && req.Method != "shutdown" {
-				return errorResponse(req.ID, ErrCodeLocked, "vault is locked")
-			}
+		if h.app.IsExpired() {
+			h.app.Lock()
 		}
+		if h.app.IsLocked() && req.Method != "status" && req.Method != "sync_status" && req.Method != "shutdown" {
+			return errorResponse(req.ID, ErrCodeLocked, "vault is locked")
+		}
+	}
+
+	if !h.app.IsLocked() && isUserActivityMethod(req.Method) {
+		h.app.Touch()
 	}
 
 	switch req.Method {

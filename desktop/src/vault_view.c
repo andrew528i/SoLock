@@ -537,7 +537,7 @@ static void vault_stop_detail_totp(VaultData *vd)
         g_source_remove(vd->detail_totp_timer);
         vd->detail_totp_timer = 0;
     }
-    g_free(vd->detail_totp_secret);
+    solock_secure_free(vd->detail_totp_secret);
     vd->detail_totp_secret = NULL;
     vd->detail_totp_row = NULL;
     vd->detail_totp_bar = NULL;
@@ -944,7 +944,7 @@ static void on_generate_password(GtkButton *button, gpointer data)
     GtkWidget *entry = g_object_get_data(G_OBJECT(button), "password-entry");
     if (entry)
         gtk_editable_set_text(GTK_EDITABLE(entry), password);
-    g_free(password);
+    solock_secure_free(password);
 }
 
 static GtkWidget *make_edit_field_row(VaultData *vd, const char *key, const char *value)

@@ -1,23 +1,44 @@
+@define-color solock_bg            #1c2126;
+@define-color solock_bg_input      #2d373e;
+@define-color solock_fg            #d3c6aa;
+@define-color solock_fg_muted      #9da9a0;
+@define-color solock_fg_dim        #859289;
+@define-color solock_fg_dimmer     #7a8478;
+@define-color solock_border        #4f585e;
+@define-color solock_accent        #7fbbb3;
+@define-color solock_success       #a7c080;
+@define-color solock_warning       #dbbc7f;
+@define-color solock_danger        #e67e80;
+@define-color solock_group_red     #e67e80;
+@define-color solock_group_orange  #e69875;
+@define-color solock_group_yellow  #dbbc7f;
+@define-color solock_group_green   #a7c080;
+@define-color solock_group_teal    #7fbbb3;
+@define-color solock_group_blue    #7393b3;
+@define-color solock_group_purple  #d196b3;
+@define-color solock_group_pink    #d699b6;
+@define-color solock_group_gray    #859289;
+
 window.popup-window {
     background: none;
-    background-color: rgba(28, 33, 38, 0.98);
+    background-color: alpha(@solock_bg, 0.98);
     border-radius: 12px;
-    border: 1px solid rgba(127, 187, 179, 0.2);
+    border: 1px solid alpha(@solock_accent, 0.2);
 }
 
 .search-input {
-    background: rgba(45, 55, 62, 0.7);
+    background: alpha(@solock_bg_input, 0.7);
     border-radius: 8px;
-    border: 1px solid rgba(79, 88, 94, 0.25);
+    border: 1px solid alpha(@solock_border, 0.25);
     padding: 7px 10px;
     font-size: 15px;
-    color: #d3c6aa;
-    caret-color: #7fbbb3;
+    color: @solock_fg;
+    caret-color: @solock_accent;
 }
 
 .search-input:focus {
-    background: rgba(45, 55, 62, 0.9);
-    border-color: rgba(127, 187, 179, 0.4);
+    background: alpha(@solock_bg_input, 0.9);
+    border-color: alpha(@solock_accent, 0.4);
 }
 
 .search-input image.left {
@@ -33,7 +54,7 @@ window.popup-window {
 
 .scroll-indicator {
     font-size: 10px;
-    color: #7a8478;
+    color: @solock_fg_dimmer;
     margin: 2px 0;
     letter-spacing: 3px;
 }
@@ -51,7 +72,7 @@ window.popup-window {
 }
 
 .entry-list row:hover {
-    background-color: rgba(127, 187, 179, 0.08);
+    background-color: alpha(@solock_accent, 0.08);
 }
 
 .entry-list.keyboard-nav row:hover:not(:selected) {
@@ -59,35 +80,35 @@ window.popup-window {
 }
 
 .entry-list row:selected {
-    background-color: rgba(127, 187, 179, 0.16);
+    background-color: alpha(@solock_accent, 0.16);
 }
 
 .entry-name {
     font-weight: 500;
     font-size: 15px;
-    color: #d3c6aa;
+    color: @solock_fg;
 }
 
 .entry-subtitle {
     font-size: 12px;
-    color: #859289;
+    color: @solock_fg_dim;
 }
 
 .entry-icon {
-    color: #7a8478;
+    color: @solock_fg_dimmer;
 }
 
 .totp-indicator {
     font-size: 8px;
-    color: #7fbbb3;
+    color: @solock_accent;
     margin-end: 6px;
 }
 
 .label-hint {
     font-weight: 700;
     font-size: 11px;
-    color: #7fbbb3;
-    background: rgba(127, 187, 179, 0.2);
+    color: @solock_accent;
+    background: alpha(@solock_accent, 0.2);
     border-radius: 4px;
     min-width: 0;
     min-height: 16px;
@@ -107,12 +128,12 @@ window.popup-window {
 .detail-name {
     font-weight: 600;
     font-size: 17px;
-    color: #d3c6aa;
+    color: @solock_fg;
 }
 
 .detail-meta {
     font-size: 11px;
-    color: #7a8478;
+    color: @solock_fg_dimmer;
     font-weight: 500;
 }
 
@@ -127,40 +148,40 @@ window.popup-window {
 }
 
 .detail-field-row:hover {
-    background-color: rgba(127, 187, 179, 0.06);
+    background-color: alpha(@solock_accent, 0.06);
 }
 
 .detail-field-row + .detail-field-row {
-    border-top: 1px solid rgba(79, 88, 94, 0.18);
+    border-top: 1px solid alpha(@solock_border, 0.18);
 }
 
 .detail-field-label {
     font-size: 11px;
     font-weight: 600;
-    color: #7a8478;
+    color: @solock_fg_dimmer;
     letter-spacing: 0.3px;
 }
 
 .detail-field-value {
     font-size: 15px;
-    color: #d3c6aa;
+    color: @solock_fg;
 }
 
 .copied-feedback {
-    color: #a7c080;
+    color: @solock_success;
     font-size: 12px;
     font-weight: 500;
 }
 
 .unlock-icon {
-    color: #7fbbb3;
+    color: @solock_accent;
     opacity: 0.7;
 }
 
 .unlock-title {
     font-size: 15px;
     font-weight: 400;
-    color: #9da9a0;
+    color: @solock_fg_muted;
 }
 
 levelbar,
@@ -179,18 +200,18 @@ levelbar trough block.low {
 
 levelbar trough {
     min-height: 4px;
-    background: rgba(79, 88, 94, 0.35);
+    background: alpha(@solock_border, 0.35);
 }
 
 levelbar trough block.filled,
 levelbar trough block.full,
 levelbar trough block.high {
-    background-color: #7fbbb3;
+    background-color: @solock_accent;
 }
 
 levelbar trough block.empty,
 levelbar trough block.low {
-    background-color: rgba(79, 88, 94, 0.2);
+    background-color: alpha(@solock_border, 0.2);
 }
 
 levelbar:focus,
@@ -204,19 +225,19 @@ levelbar:focus-visible {
 .totp-ok trough block.filled,
 .totp-ok trough block.full,
 .totp-ok trough block.high {
-    background-color: #a7c080;
+    background-color: @solock_success;
 }
 
 .totp-warn trough block.filled,
 .totp-warn trough block.full,
 .totp-warn trough block.high {
-    background-color: #dbbc7f;
+    background-color: @solock_warning;
 }
 
 .totp-danger trough block.filled,
 .totp-danger trough block.full,
 .totp-danger trough block.high {
-    background-color: #e67e80;
+    background-color: @solock_danger;
 }
 
 preferencesgroup list row {
@@ -247,22 +268,22 @@ preferencesgroup > box > label {
     padding: 2px 8px;
     min-height: 22px;
     border-radius: 6px;
-    color: #859289;
+    color: @solock_fg_dim;
     background: transparent;
     transition: all 120ms ease;
 }
 
 .group-chip:hover {
-    background: rgba(127, 187, 179, 0.1);
+    background: alpha(@solock_accent, 0.1);
 }
 
 .group-chip-active {
-    color: #d3c6aa;
-    background: rgba(127, 187, 179, 0.16);
+    color: @solock_fg;
+    background: alpha(@solock_accent, 0.16);
 }
 
 .group-chip-active:hover {
-    background: rgba(127, 187, 179, 0.22);
+    background: alpha(@solock_accent, 0.22);
 }
 
 .group-color-dot {
@@ -295,15 +316,15 @@ preferencesgroup > box > label {
     text-shadow: 0 0 6px currentColor;
 }
 
-.gc-red    { color: #e67e80; }
-.gc-orange { color: #e69875; }
-.gc-yellow { color: #dbbc7f; }
-.gc-green  { color: #a7c080; }
-.gc-teal   { color: #7fbbb3; }
-.gc-blue   { color: #7393b3; }
-.gc-purple { color: #d196b3; }
-.gc-pink   { color: #d699b6; }
-.gc-gray   { color: #859289; }
+.gc-red    { color: @solock_group_red; }
+.gc-orange { color: @solock_group_orange; }
+.gc-yellow { color: @solock_group_yellow; }
+.gc-green  { color: @solock_group_green; }
+.gc-teal   { color: @solock_group_teal; }
+.gc-blue   { color: @solock_group_blue; }
+.gc-purple { color: @solock_group_purple; }
+.gc-pink   { color: @solock_group_pink; }
+.gc-gray   { color: @solock_group_gray; }
 
 .vault-list-panel {
     background-color: @view_bg_color;

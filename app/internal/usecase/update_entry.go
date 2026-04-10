@@ -55,7 +55,9 @@ func (uc *UpdateEntryUseCase) Execute(ctx context.Context, entry *domain.Entry) 
 			if err := uc.entries.Save(ctx, entry); err != nil {
 				return nil, fmt.Errorf("save local: %w", err)
 			}
-			uc.entries.MarkSynced(ctx, entry.ID())
+			if err := uc.entries.MarkSynced(ctx, entry.ID()); err != nil {
+				return nil, fmt.Errorf("mark synced: %w", err)
+			}
 			return &UpdateEntryResult{OnChain: true}, nil
 		}
 

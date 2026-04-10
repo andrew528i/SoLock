@@ -30,6 +30,13 @@ func NewCryptoService(key []byte) domain.CryptoService {
 	return &cryptoService{key: key}
 }
 
+func (s *cryptoService) Wipe() {
+	for i := range s.key {
+		s.key[i] = 0
+	}
+	s.key = nil
+}
+
 func (s *cryptoService) Encrypt(plaintext []byte) ([]byte, error) {
 	compressed, err := gzipCompress(plaintext)
 	if err != nil {
@@ -43,11 +50,7 @@ func (s *cryptoService) Decrypt(ciphertext []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	decompressed, err := gzipDecompress(decrypted)
-	if err != nil {
-		return aesDecrypt(ciphertext, s.key)
-	}
-	return decompressed, nil
+	return gzipDecompress(decrypted)
 }
 
 func aesEncrypt(plaintext, key []byte) ([]byte, error) {

@@ -21,21 +21,24 @@ type SyncStatus struct {
 	Error      string `json:"error,omitempty"`
 }
 
+const DefaultIdleTimeoutMinutes = 90
+
 type App struct {
 	dataDir          string
 	keyDeriver       domain.KeyDeriver
 	vaultRepoFactory VaultRepoFactory
 	storageFactory   StorageFactory
 
-	mu        sync.RWMutex
-	keys      *domain.DerivedKeys
-	crypto    domain.CryptoService
-	entries   domain.EntryRepository
-	groups    domain.GroupRepository
-	config    domain.ConfigRepository
-	syncState domain.SyncStateRepository
-	vault     domain.VaultRepository
-	expiresAt time.Time
+	mu             sync.RWMutex
+	keys           *domain.DerivedKeys
+	crypto         domain.CryptoService
+	entries        domain.EntryRepository
+	groups         domain.GroupRepository
+	config         domain.ConfigRepository
+	syncState      domain.SyncStateRepository
+	vault          domain.VaultRepository
+	expiresAt      time.Time
+	idleTimeout    time.Duration
 
 	syncMu     sync.RWMutex
 	syncStatus SyncStatus
@@ -99,9 +102,11 @@ func (a *App) OnUnlockWithTimeout(ctx context.Context, password, rpcURL string, 
 	a.keys = result.Keys
 	a.crypto = result.Crypto
 
-	if timeoutMinutes > 0 {
-		a.expiresAt = time.Now().Add(time.Duration(timeoutMinutes) * time.Minute)
+	if timeoutMinutes <= 0 {
+		timeoutMinutes = DefaultIdleTimeoutMinutes
 	}
+	a.idleTimeout = time.Duration(timeoutMinutes) * time.Minute
+	a.expiresAt = time.Now().Add(a.idleTimeout)
 
 	dbPath := filepath.Join(a.dataDir, "vault.db")
 	entries, groups, config, syncState, err := a.storageFactory(dbPath, a.crypto)
@@ -124,7 +129,7 @@ func (a *App) OnUnlockWithTimeout(ctx context.Context, password, rpcURL string, 
 	a.DeleteEntry = usecase.NewDeleteEntryUseCase(a.entries, a.vault)
 	a.Sync = usecase.NewSyncUseCase(a.entries, a.groups, a.vault, a.syncState, a.crypto)
 	a.ListEntries = usecase.NewListEntriesUseCase(a.entries)
-	a.SearchEntries = usecase.NewSearchEntriesUseCase(a.entries)
+	a.SearchEntries = usecase.NewSearchEntriesUseCase(a.entries, a.groups)
 	a.GetEntry = usecase.NewGetEntryUseCase(a.entries)
 	a.GetDashboard = usecase.NewGetDashboardUseCase(a.vault, a.entries, a.groups, a.config, a.syncState, a.keys)
 	a.DeployProgram = usecase.NewDeployProgramUseCase(a.vault, a.keys)
@@ -153,11 +158,24 @@ func (a *App) Lock() {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
+	if a.crypto != nil {
+		a.crypto.Wipe()
+	}
 	if a.keys != nil {
 		a.keys.Zero()
 		a.keys = nil
 	}
 	a.expiresAt = time.Time{}
+	a.idleTimeout = 0
+}
+
+func (a *App) Touch() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.keys == nil || a.idleTimeout <= 0 {
+		return
+	}
+	a.expiresAt = time.Now().Add(a.idleTimeout)
 }
 
 func (a *App) IsLocked() bool {
@@ -181,13 +199,47 @@ func (a *App) ExpiresAt() time.Time {
 	return a.expiresAt
 }
 
-func (a *App) Keys() *domain.DerivedKeys            { return a.keys }
-func (a *App) Entries() domain.EntryRepository       { return a.entries }
-func (a *App) Groups() domain.GroupRepository        { return a.groups }
-func (a *App) Config() domain.ConfigRepository       { return a.config }
-func (a *App) SyncState() domain.SyncStateRepository { return a.syncState }
-func (a *App) Vault() domain.VaultRepository         { return a.vault }
-func (a *App) Crypto() domain.CryptoService          { return a.crypto }
+func (a *App) Keys() *domain.DerivedKeys {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.keys
+}
+
+func (a *App) Entries() domain.EntryRepository {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.entries
+}
+
+func (a *App) Groups() domain.GroupRepository {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.groups
+}
+
+func (a *App) Config() domain.ConfigRepository {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.config
+}
+
+func (a *App) SyncState() domain.SyncStateRepository {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.syncState
+}
+
+func (a *App) Vault() domain.VaultRepository {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.vault
+}
+
+func (a *App) Crypto() domain.CryptoService {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.crypto
+}
 
 func (a *App) GetSyncStatus() SyncStatus {
 	a.syncMu.RLock()

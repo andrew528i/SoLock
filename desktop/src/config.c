@@ -17,7 +17,7 @@ static char *config_path(void)
 SolockConfig *solock_config_new(void)
 {
     SolockConfig *c = g_new0(SolockConfig, 1);
-    c->timeout_minutes = 600;
+    c->timeout_minutes = 90;
     c->clipboard_clear_seconds = 15;
     c->paste_method = g_strdup("wtype");
     c->path = config_path();
@@ -68,7 +68,7 @@ gboolean solock_config_load(SolockConfig *c)
     char *contents = read_file_contents(c->path);
     if (!contents) return FALSE;
 
-    c->timeout_minutes = parse_int_value(contents, "timeout_minutes", 600);
+    c->timeout_minutes = parse_int_value(contents, "timeout_minutes", 90);
     c->clipboard_clear_seconds = parse_int_value(contents, "clear_after_seconds", 15);
     g_free(c->paste_method);
     c->paste_method = parse_string_value(contents, "method", "wtype");

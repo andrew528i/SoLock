@@ -44,6 +44,46 @@ func TestDecryptWrongKey(t *testing.T) {
 	}
 }
 
+func TestWipeClearsKey(t *testing.T) {
+	key := make([]byte, 32)
+	rand.Read(key)
+	svc := NewCryptoService(key)
+
+	plaintext := []byte("before wipe")
+	ciphertext, err := svc.Encrypt(plaintext)
+	if err != nil {
+		t.Fatalf("encrypt: %v", err)
+	}
+
+	svc.Wipe()
+
+	for i, b := range key {
+		if b != 0 {
+			t.Fatalf("key byte %d not zeroed: %#x", i, b)
+		}
+	}
+
+	if _, err := svc.Decrypt(ciphertext); err == nil {
+		t.Fatal("decrypt after wipe should fail")
+	}
+}
+
+func TestDecryptRejectsNonGzipPlaintext(t *testing.T) {
+	key := make([]byte, 32)
+	rand.Read(key)
+	svc := NewCryptoService(key).(*cryptoService)
+
+	raw := []byte("plain bytes that are not gzip framed")
+	ciphertext, err := aesEncrypt(raw, svc.key)
+	if err != nil {
+		t.Fatalf("aesEncrypt: %v", err)
+	}
+
+	if _, err := svc.Decrypt(ciphertext); err == nil {
+		t.Fatal("expected error when decrypting non-gzip plaintext, got nil")
+	}
+}
+
 func TestEncryptCompresses(t *testing.T) {
 	key := make([]byte, 32)
 	rand.Read(key)

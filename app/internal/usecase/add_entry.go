@@ -67,7 +67,9 @@ func (uc *AddEntryUseCase) Execute(ctx context.Context, entry *domain.Entry) (*A
 			if err := uc.entries.Save(ctx, entry); err != nil {
 				return nil, fmt.Errorf("save local: %w", err)
 			}
-			uc.entries.MarkSynced(ctx, entry.ID())
+			if err := uc.entries.MarkSynced(ctx, entry.ID()); err != nil {
+				return nil, fmt.Errorf("mark synced: %w", err)
+			}
 			return &AddEntryResult{OnChain: true}, nil
 		}
 
@@ -82,11 +84,19 @@ func (uc *AddEntryUseCase) Execute(ctx context.Context, entry *domain.Entry) (*A
 }
 
 func (uc *AddEntryUseCase) saveLocalOnly(ctx context.Context, entry *domain.Entry) (*AddEntryResult, error) {
-	state, _ := uc.syncState.Get(ctx)
+	state, err := uc.syncState.Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get sync state: %w", err)
+	}
+	if state == nil {
+		state = &domain.SyncState{}
+	}
 	entry.SetSlotIndex(state.NextIndex)
 	state.NextIndex++
 	state.EntryCount++
-	uc.syncState.Set(ctx, state)
+	if err := uc.syncState.Set(ctx, state); err != nil {
+		return nil, fmt.Errorf("set sync state: %w", err)
+	}
 
 	if err := uc.entries.Save(ctx, entry); err != nil {
 		return nil, err

@@ -98,7 +98,7 @@ static gboolean do_paste_delayed(gpointer data)
     } else {
         solock_clipboard_copy(job->value, job->clear_seconds, NULL);
     }
-    g_free(job->value);
+    solock_secure_free(job->value);
     g_free(job);
     return G_SOURCE_REMOVE;
 }
@@ -137,7 +137,7 @@ typedef struct {
 static void field_click_data_free(gpointer data)
 {
     FieldClickData *fcd = data;
-    g_free(fcd->value);
+    solock_secure_free(fcd->value);
     g_free(fcd);
 }
 
@@ -157,7 +157,7 @@ typedef struct {
 static void totp_click_data_free(gpointer data)
 {
     TotpClickData *tcd = data;
-    g_free(tcd->code);
+    solock_secure_free(tcd->code);
     g_free(tcd);
 }
 
@@ -214,7 +214,7 @@ static gboolean update_totp(gpointer data)
 
     TotpClickData *tcd = g_object_get_data(G_OBJECT(dd->totp_code_label), "totp-click-data");
     if (tcd) {
-        g_free(tcd->code);
+        solock_secure_free(tcd->code);
         tcd->code = g_strdup(code);
     }
 
@@ -255,7 +255,7 @@ static void on_detail_destroy(GtkWidget *widget, gpointer data)
     if (dd->fields) {
         for (int i = 0; i < dd->field_count; i++) {
             g_free(dd->fields[i].label);
-            g_free(dd->fields[i].value);
+            solock_secure_free(dd->fields[i].value);
         }
         g_free(dd->fields);
     }

@@ -26,6 +26,8 @@ sources = files(
   'src/tray.c',
   'src/wtype.c',
   'src/clipboard.c',
+  'src/secure.c',
+  'src/theme.c',
 )
 
 datadir = get_option('prefix') / get_option('datadir') / 'solock-desktop'
@@ -39,6 +41,10 @@ executable('solock-desktop',
 )
 
 install_data('data/style.css',
+  install_dir: datadir,
+)
+
+install_data('data/theme.example.ini',
   install_dir: datadir,
 )
 
