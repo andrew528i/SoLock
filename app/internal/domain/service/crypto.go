@@ -13,13 +13,23 @@ import (
 )
 
 const (
-	ivSize    = 16
-	blockSize = aes.BlockSize
+	// v1 (legacy, read-only): AES-256-CBC with PKCS7 padding, 16-byte random IV
+	// prepended to ciphertext. Total length is always a multiple of 16 and >= 32.
+	v1IVSize    = 16
+	v1BlockSize = aes.BlockSize
+
+	// v2 (current): AES-256-GCM. Layout: [0x02][12-byte nonce][ciphertext][16-byte tag].
+	// GCM provides authenticated encryption - tampered blobs are rejected on decrypt.
+	v2Version   byte = 0x02
+	v2NonceSize      = 12
+	v2TagSize        = 16
+	v2MinSize        = 1 + v2NonceSize + v2TagSize
 )
 
 var (
 	errInvalidCiphertext = errors.New("invalid ciphertext")
 	errInvalidPadding    = errors.New("invalid PKCS7 padding")
+	errUnknownVersion    = errors.New("unknown ciphertext version")
 )
 
 type cryptoService struct {
@@ -42,37 +52,89 @@ func (s *cryptoService) Encrypt(plaintext []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return aesEncrypt(compressed, s.key)
+	return aesGCMEncrypt(compressed, s.key)
 }
 
+// Decrypt recognises both the current v2 (AES-GCM) format and the legacy v1
+// (AES-CBC) format. v2 blobs start with a 0x02 version byte; v1 blobs have no
+// version prefix and are always a multiple of 16 bytes long. A v1 blob whose
+// first byte happens to be 0x02 will fail the v2 GCM tag check and fall back
+// to v1 decoding automatically.
 func (s *cryptoService) Decrypt(ciphertext []byte) ([]byte, error) {
-	decrypted, err := aesDecrypt(ciphertext, s.key)
+	if looksLikeV2(ciphertext) {
+		plaintext, err := aesGCMDecrypt(ciphertext, s.key)
+		if err == nil {
+			return gzipDecompress(plaintext)
+		}
+		if !looksLikeV1(ciphertext) {
+			return nil, err
+		}
+	}
+
+	if !looksLikeV1(ciphertext) {
+		return nil, errInvalidCiphertext
+	}
+	plaintext, err := aesCBCDecrypt(ciphertext, s.key)
 	if err != nil {
 		return nil, err
 	}
-	return gzipDecompress(decrypted)
+	return gzipDecompress(plaintext)
 }
 
-func aesEncrypt(plaintext, key []byte) ([]byte, error) {
+func looksLikeV2(blob []byte) bool {
+	return len(blob) >= v2MinSize && blob[0] == v2Version
+}
+
+func looksLikeV1(blob []byte) bool {
+	return len(blob) >= v1IVSize+v1BlockSize && len(blob)%v1BlockSize == 0
+}
+
+func aesGCMEncrypt(plaintext, key []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
 	}
-
-	iv := make([]byte, ivSize)
-	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
 		return nil, err
 	}
 
-	padded := pkcs7Pad(plaintext, blockSize)
-	ct := make([]byte, len(padded))
-	cipher.NewCBCEncrypter(block, iv).CryptBlocks(ct, padded)
+	nonce := make([]byte, v2NonceSize)
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return nil, err
+	}
 
-	return append(iv, ct...), nil
+	out := make([]byte, 0, 1+v2NonceSize+len(plaintext)+v2TagSize)
+	out = append(out, v2Version)
+	out = append(out, nonce...)
+	out = gcm.Seal(out, nonce, plaintext, nil)
+	return out, nil
 }
 
-func aesDecrypt(ciphertext, key []byte) ([]byte, error) {
-	if len(ciphertext) < ivSize+blockSize {
+func aesGCMDecrypt(blob, key []byte) ([]byte, error) {
+	if len(blob) < v2MinSize {
+		return nil, errInvalidCiphertext
+	}
+	if blob[0] != v2Version {
+		return nil, errUnknownVersion
+	}
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	nonce := blob[1 : 1+v2NonceSize]
+	ciphertext := blob[1+v2NonceSize:]
+	return gcm.Open(nil, nonce, ciphertext, nil)
+}
+
+func aesCBCDecrypt(ciphertext, key []byte) ([]byte, error) {
+	if len(ciphertext) < v1IVSize+v1BlockSize {
 		return nil, errInvalidCiphertext
 	}
 
@@ -81,9 +143,9 @@ func aesDecrypt(ciphertext, key []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	iv := ciphertext[:ivSize]
-	encrypted := ciphertext[ivSize:]
-	if len(encrypted)%blockSize != 0 {
+	iv := ciphertext[:v1IVSize]
+	encrypted := ciphertext[v1IVSize:]
+	if len(encrypted)%v1BlockSize != 0 {
 		return nil, errInvalidCiphertext
 	}
 
@@ -93,17 +155,12 @@ func aesDecrypt(ciphertext, key []byte) ([]byte, error) {
 	return pkcs7Unpad(plaintext)
 }
 
-func pkcs7Pad(data []byte, blockSize int) []byte {
-	padding := blockSize - (len(data) % blockSize)
-	return append(data, bytes.Repeat([]byte{byte(padding)}, padding)...)
-}
-
 func pkcs7Unpad(data []byte) ([]byte, error) {
 	if len(data) == 0 {
 		return nil, errInvalidPadding
 	}
 	padding := int(data[len(data)-1])
-	if padding == 0 || padding > blockSize || padding > len(data) {
+	if padding == 0 || padding > v1BlockSize || padding > len(data) {
 		return nil, errInvalidPadding
 	}
 	for i := 0; i < padding; i++ {
