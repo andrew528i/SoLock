@@ -21,7 +21,7 @@ type SyncStatus struct {
 	Error      string `json:"error,omitempty"`
 }
 
-const DefaultIdleTimeoutMinutes = 90
+const DefaultSessionTimeoutMinutes = 720
 
 type App struct {
 	dataDir          string
@@ -29,16 +29,15 @@ type App struct {
 	vaultRepoFactory VaultRepoFactory
 	storageFactory   StorageFactory
 
-	mu             sync.RWMutex
-	keys           *domain.DerivedKeys
-	crypto         domain.CryptoService
-	entries        domain.EntryRepository
-	groups         domain.GroupRepository
-	config         domain.ConfigRepository
-	syncState      domain.SyncStateRepository
-	vault          domain.VaultRepository
-	expiresAt      time.Time
-	idleTimeout    time.Duration
+	mu        sync.RWMutex
+	keys      *domain.DerivedKeys
+	crypto    domain.CryptoService
+	entries   domain.EntryRepository
+	groups    domain.GroupRepository
+	config    domain.ConfigRepository
+	syncState domain.SyncStateRepository
+	vault     domain.VaultRepository
+	expiresAt time.Time
 
 	syncMu     sync.RWMutex
 	syncStatus SyncStatus
@@ -103,10 +102,9 @@ func (a *App) OnUnlockWithTimeout(ctx context.Context, password, rpcURL string, 
 	a.crypto = result.Crypto
 
 	if timeoutMinutes <= 0 {
-		timeoutMinutes = DefaultIdleTimeoutMinutes
+		timeoutMinutes = DefaultSessionTimeoutMinutes
 	}
-	a.idleTimeout = time.Duration(timeoutMinutes) * time.Minute
-	a.expiresAt = time.Now().Add(a.idleTimeout)
+	a.expiresAt = time.Now().Add(time.Duration(timeoutMinutes) * time.Minute)
 
 	dbPath := filepath.Join(a.dataDir, "vault.db")
 	entries, groups, config, syncState, err := a.storageFactory(dbPath, a.crypto)
@@ -166,16 +164,6 @@ func (a *App) Lock() {
 		a.keys = nil
 	}
 	a.expiresAt = time.Time{}
-	a.idleTimeout = 0
-}
-
-func (a *App) Touch() {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	if a.keys == nil || a.idleTimeout <= 0 {
-		return
-	}
-	a.expiresAt = time.Now().Add(a.idleTimeout)
 }
 
 func (a *App) IsLocked() bool {
